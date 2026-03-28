@@ -11,6 +11,7 @@ import lyrsmith.config as config_module
 from lyrsmith.app import LyrsmithApp
 from lyrsmith.config import Config
 from lyrsmith.ui.bottom_bar import BottomBar
+from lyrsmith.ui.help_modal import HelpModal
 from lyrsmith.ui.lyrics_editor import LyricsEditor
 from lyrsmith.ui.top_bar import TopBar
 from lyrsmith.ui.waveform_pane import WaveformPane
@@ -61,6 +62,34 @@ def test_app_mounts_and_core_widgets_present(
             # LyricsEditor starts in empty/placeholder mode (no file loaded)
             assert app.query_one(LyricsEditor).mode == "empty"
             # Clean quit — terminates mpv and calls save_config (now redirected)
+            await pilot.press("ctrl+q")
+
+    asyncio.run(_run())
+
+
+def test_help_modal_opens_and_closes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F1 opens HelpModal; Escape closes it."""
+    monkeypatch.setattr(config_module, "_CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(config_module, "_CONFIG_FILE", tmp_path / "config.yaml")
+
+    async def _run() -> None:
+        app = LyrsmithApp(initial_dir=tmp_path, config=Config())
+        async with app.run_test(headless=True) as pilot:
+            # Modal not visible at start
+            assert len(app.query(HelpModal)) == 0
+
+            # Open via action (F1 in real use); push_screen makes it the top screen
+            app.action_show_help()
+            await pilot.pause()
+            assert isinstance(app.screen, HelpModal)
+
+            # Close with Escape — base screen should be back on top
+            await pilot.press("escape")
+            await pilot.pause()
+            assert not isinstance(app.screen, HelpModal)
+
             await pilot.press("ctrl+q")
 
     asyncio.run(_run())

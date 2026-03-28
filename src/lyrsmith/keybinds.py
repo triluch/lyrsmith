@@ -52,3 +52,4 @@ KB_TRANSCRIBE = "ctrl+t"  # trigger whisper transcription
 KB_NEXT_MODEL = "ctrl+n"  # cycle whisper model  (ctrl+m = CR = Enter in terminals)
 KB_NEXT_LANG = "ctrl+l"  # cycle whisper language
 KB_QUIT = "ctrl+q"
+KB_HELP = "f1"  # open keybind reference

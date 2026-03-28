@@ -14,6 +14,7 @@ from .audio.player import Player
 from .config import Config, save as save_config
 from .keybinds import (
     KB_DISCARD_RELOAD,
+    KB_HELP,
     KB_NEXT_LANG,
     KB_NEXT_MODEL,
     KB_QUIT,
@@ -28,6 +29,7 @@ from .ui.file_browser import FileBrowser
 from .ui.left_pane import LeftPane
 from .ui.lyrics_editor import LyricsEditor
 from .ui.top_bar import TopBar
+from .ui.help_modal import HelpModal
 from .ui.unsaved_modal import UnsavedModal
 from .ui.waveform_pane import WaveformPane
 
@@ -60,6 +62,7 @@ class LyrsmithApp(App):
         Binding(KB_TRANSCRIBE, "transcribe", "Transcribe", show=False),
         Binding(KB_NEXT_MODEL, "next_model", "Model", show=False),
         Binding(KB_NEXT_LANG, "next_lang", "Language", show=False),
+        Binding(KB_HELP, "show_help", "Help", show=False),
     ]
 
     def __init__(self, initial_dir: Path, config: Config) -> None:
@@ -282,6 +285,9 @@ class LyrsmithApp(App):
         self._config.whisper_language = langs[(idx + 1) % len(langs)]
         self.query_one(TopBar).set_language(self._config.whisper_language)
         save_config(self._config)
+
+    def action_show_help(self) -> None:
+        self.push_screen(HelpModal())
 
     # ------------------------------------------------------------------
     # Internals

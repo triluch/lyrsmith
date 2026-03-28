@@ -12,6 +12,7 @@ from ..keybinds import (
     KB_DELETE_LINE,
     KB_DOWN,
     KB_EDIT_LINE,
+    KB_HELP,
     KB_MERGE_LINE,
     KB_NEXT_LANG,
     KB_NEXT_MODEL,
@@ -132,6 +133,7 @@ def _build_hints() -> dict[str, str]:
                 _k(KB_NEXT_MODEL, "Model"),
                 _k(KB_NEXT_LANG, "Lang"),
                 _k(KB_SAVE, "Save"),
+                _k(KB_HELP, "Help"),
                 _k(KB_QUIT, "Quit"),
             ]
         ),
@@ -142,6 +144,7 @@ def _build_hints() -> dict[str, str]:
                 _kk(KB_SEEK_BACK_LARGE, KB_SEEK_FWD_LARGE, f"Seek {int(SEEK_LARGE)}s"),
                 _kk(KB_ZOOM_IN, KB_ZOOM_OUT, "Zoom", "/"),
                 _k(KB_SAVE, "Save"),
+                _k(KB_HELP, "Help"),
                 _k(KB_QUIT, "Quit"),
             ]
         ),
@@ -161,6 +164,7 @@ def _build_hints() -> dict[str, str]:
                 _k(KB_MERGE_LINE, "Merge"),
                 _k(KB_DELETE_LINE, "Delete"),
                 _k(KB_SAVE, "Save"),
+                _k(KB_HELP, "Help"),
             ]
         ),
         "lyrics-plain": _SEP.join(
@@ -168,12 +172,14 @@ def _build_hints() -> dict[str, str]:
                 f"[{_DC}]Edit freely[/]",
                 _k(KB_SAVE, "Save"),
                 _k(KB_DISCARD_RELOAD, "Reload"),
+                _k(KB_HELP, "Help"),
                 _k(KB_QUIT, "Quit"),
             ]
         ),
         "empty": _SEP.join(
             [
                 f"[{_DC}]Browse to a file and press [{_KC}]{fmt_key(KB_SELECT)}[/][{_DC}] to load[/]",
+                _k(KB_HELP, "Help"),
                 _k(KB_QUIT, "Quit"),
             ]
         ),
