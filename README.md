@@ -12,6 +12,8 @@ Point it at a directory, load a track, run Whisper to get a rough transcription,
 - **Plain text mode** for unsynced lyrics
 - Reads and writes lyrics tags on **MP3, FLAC, OGG, OPUS**
 
+![lyrsmith screenshot](docs/lyrsmith_screenshot.png)
+
 ## Requirements
 
 - Python 3.13+
@@ -51,6 +53,8 @@ lyrsmith [DIRECTORY]
 ```
 
 If no directory is given, the last-used directory is restored (or the current working directory on first run).
+
+Due to how Whisper works, the first transcribed line always gets timestamp 0:00 regardless of when vocals start. Stamp it manually.
 
 ---
 
