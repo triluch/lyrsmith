@@ -16,7 +16,7 @@ Point it at a directory, load a track, run Whisper to get a rough transcription,
 
 ## Requirements
 
-- Python 3.13+
+- Python **3.13** (3.14 is not yet supported due to a ctranslate2 bug)
 - **libmpv** (audio playback)
 - **FFmpeg libraries** (waveform decoding via PyAV)
 
@@ -30,6 +30,15 @@ On Debian/Ubuntu:
 apt install libmpv-dev ffmpeg
 ```
 
+**NVIDIA GPU** — if you want GPU-accelerated transcription, also install libcublas and make sure it is registered with ldconfig:
+
+```
+# Fedora example — package name may vary
+dnf install libcublas
+echo "/usr/local/cuda-12.0/targets/x86_64-linux/lib" | sudo tee /etc/ld.so.conf.d/cuda.conf
+sudo ldconfig
+```
+
 ## Install
 
 From source using [uv](https://docs.astral.sh/uv/):
@@ -37,13 +46,20 @@ From source using [uv](https://docs.astral.sh/uv/):
 ```
 git clone https://github.com/triluch/lyrsmith
 cd lyrsmith
-uv tool install .
+uv tool install . --python 3.13
 ```
 
 Or with pipx:
 
 ```
 pipx install .
+```
+
+## Updating
+
+```
+git -C lyrsmith pull
+uv tool install lyrsmith --python 3.13 --reinstall
 ```
 
 ## Usage

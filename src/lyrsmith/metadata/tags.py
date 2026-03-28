@@ -56,7 +56,8 @@ def read_info(path: Path) -> FileInfo:
         pass
 
     try:
-        lyrics_text = _read_lyrics_raw(path)
+        raw = _read_lyrics_raw(path)
+        lyrics_text = raw if raw else None  # treat empty tag as absent
         if lyrics_text is not None:
             has_lyrics = True
             lyrics_type = "lrc" if is_lrc(lyrics_text) else "plain"
