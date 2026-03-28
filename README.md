@@ -58,8 +58,9 @@ pipx install .
 ## Updating
 
 ```
-git -C lyrsmith pull
-uv tool install lyrsmith --python 3.13 --reinstall
+cd lyrsmith
+git pull
+uv tool install . --python 3.13 --reinstall
 ```
 
 ## Usage
