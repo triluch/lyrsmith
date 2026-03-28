@@ -428,19 +428,15 @@ class LyricsEditor(Widget):
 
         elif key in _KEY_NUDGE:
             event.stop()
-            if self._is_playing:
-                return
             self._nudge(self._cursor_idx, _KEY_NUDGE[key])
 
         elif key == KB_DELETE_LINE:
             event.stop()
-            if not self._is_playing:
-                self._delete(self._cursor_idx)
+            self._delete(self._cursor_idx)
 
         elif key == KB_MERGE_LINE:
             event.stop()
-            if not self._is_playing:
-                self._merge(self._cursor_idx)
+            self._merge(self._cursor_idx)
 
         elif key == KB_EDIT_LINE:
             event.stop()
