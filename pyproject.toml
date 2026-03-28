@@ -1,0 +1,33 @@
+[project]
+name = "lyrsmith"
+version = "0.1.0"
+description = "TUI app for transcribing and editing synced song lyrics"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Andrzej Voss", email = "git@poczta.tril.pl" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "av>=17.0.0",
+    "faster-whisper>=1.2.1",
+    "mutagen>=1.47.0",
+    "numpy>=2.4.3",
+    "platformdirs>=4.9.4",
+    "python-mpv>=1.0.8",
+    "pyyaml>=6.0.3",
+    "textual>=8.2.0",
+]
+
+[project.scripts]
+lyrsmith = "lyrsmith.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+]
