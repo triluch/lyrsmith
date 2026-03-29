@@ -64,6 +64,18 @@ class TestSaveAndLoad:
         loaded = load()
         assert loaded.whisper_languages == ["auto", "en", "fr"]
 
+    def test_save_is_silent_on_write_failure(self, tmp_path, monkeypatch):
+        """save() swallows I/O errors — stale config is preferable to a crash on exit."""
+        import yaml
+
+        _patch(monkeypatch, tmp_path)
+
+        def _raise(*a, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(yaml, "dump", _raise)
+        save(Config())  # must not raise
+
 
 class TestLoadEdgeCases:
     def test_missing_file_returns_defaults(self, tmp_path, monkeypatch):

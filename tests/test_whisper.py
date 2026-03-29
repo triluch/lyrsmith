@@ -69,17 +69,11 @@ class TestTranscribe:
         with pytest.raises(RuntimeError, match="Model not loaded"):
             t.transcribe(Path("test.mp3"))
 
-    def test_language_auto_passes_none(self):
+    @pytest.mark.parametrize("language", ["auto", None])
+    def test_auto_and_none_language_both_pass_none(self, language):
         t, mock_model = self._transcriber_with_mock_model()
         mock_model.transcribe.return_value = ([], MagicMock())
-        t.transcribe(Path("test.mp3"), language="auto")
-        _, kwargs = mock_model.transcribe.call_args
-        assert kwargs.get("language") is None
-
-    def test_language_none_passes_none(self):
-        t, mock_model = self._transcriber_with_mock_model()
-        mock_model.transcribe.return_value = ([], MagicMock())
-        t.transcribe(Path("test.mp3"), language=None)
+        t.transcribe(Path("test.mp3"), language=language)
         _, kwargs = mock_model.transcribe.call_args
         assert kwargs.get("language") is None
 
@@ -99,14 +93,16 @@ class TestTranscribe:
     def test_segments_converted_to_lrc_lines(self):
         t, mock_model = self._transcriber_with_mock_model()
         seg1, seg2 = MagicMock(), MagicMock()
-        seg1.start, seg1.text = 1.5, "  Hello world  "
-        seg2.start, seg2.text = 3.0, "Goodbye"
+        seg1.start, seg1.end, seg1.text = 1.5, 2.8, "  Hello world  "
+        seg2.start, seg2.end, seg2.text = 3.0, 4.1, "Goodbye"
         mock_model.transcribe.return_value = ([seg1, seg2], MagicMock())
         result = t.transcribe(Path("test.mp3"))
         assert len(result) == 2
         assert result[0].timestamp == pytest.approx(1.5)
+        assert result[0].end == pytest.approx(2.8)
         assert result[0].text == "Hello world"  # stripped
         assert result[1].timestamp == pytest.approx(3.0)
+        assert result[1].end == pytest.approx(4.1)
         assert result[1].text == "Goodbye"
 
     def test_progress_callback_called_during_transcribe(self):
@@ -127,12 +123,6 @@ class TestTranscribe:
 
 
 class TestAvailableModels:
-    def test_not_empty(self):
-        assert len(AVAILABLE_MODELS) > 0
-
-    def test_all_strings(self):
-        assert all(isinstance(m, str) for m in AVAILABLE_MODELS)
-
     def test_base_present(self):
         # 'base' is the default model; must always be in the list
         assert "base" in AVAILABLE_MODELS

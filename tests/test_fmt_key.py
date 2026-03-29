@@ -48,10 +48,8 @@ class TestFmtKey:
         assert fmt_key("s") == "S"
 
     def test_unknown_key_falls_back(self):
-        # Should not raise, just return something
-        result = fmt_key("some_unknown_key")
-        assert isinstance(result, str)
-        assert result != ""
+        # Falls back to key.replace("_", " ").title()
+        assert fmt_key("some_unknown_key") == "Some Unknown Key"
 
 
 class TestKkPrefixCollapsing:

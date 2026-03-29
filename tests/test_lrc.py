@@ -36,11 +36,6 @@ class TestLRCLine:
     def test_display_str_has_space(self):
         assert LRCLine(3.5, "Hello").display_str() == "[00:03.50] Hello"
 
-    def test_display_str_differs_from_str_by_one_space(self):
-        line = LRCLine(1.0, "World")
-        assert line.display_str() == f"{line.timestamp_str()} {line.text}"
-        assert str(line) == f"{line.timestamp_str()}{line.text}"
-
 
 # ---------------------------------------------------------------------------
 # parse

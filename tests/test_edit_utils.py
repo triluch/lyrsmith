@@ -48,17 +48,6 @@ class TestSplitAtCursor:
         assert first == "One"
         assert second == "Two"
 
-    def test_col_is_offset_into_full_text(self):
-        # _split_at_cursor treats col as a raw offset into the full text string,
-        # not as a (row, col) cursor. This is correct for single-line text.
-        # For multi-line text (if the user presses Enter in the TextArea),
-        # the Textual cursor column would refer to the current row only — the
-        # caller is responsible for computing the full-text offset in that case.
-        text = "Hello World"
-        first, second = _split_at_cursor(text, 5)
-        assert first == "Hello"
-        assert second == "World"
-
 
 # ---------------------------------------------------------------------------
 # _join_lines

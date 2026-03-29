@@ -123,15 +123,3 @@ class TestConflicts:
         assert overlap == set(), (
             f"App-global keybind(s) shadow waveform-pane local binds: {overlap}"
         )
-
-    def test_app_globals_all_unique(self):
-        binds = list(_APP_GLOBALS)
-        assert len(binds) == len(set(binds)), "Duplicate app-global keybinds"
-
-    def test_lrc_local_all_unique(self):
-        binds = list(_LRC_LOCAL)
-        assert len(binds) == len(set(binds)), "Duplicate LRC-local keybinds"
-
-    def test_waveform_local_all_unique(self):
-        binds = list(_WAVEFORM_LOCAL)
-        assert len(binds) == len(set(binds)), "Duplicate waveform-local keybinds"

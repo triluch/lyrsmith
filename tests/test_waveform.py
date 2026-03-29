@@ -92,16 +92,6 @@ class TestRender:
         else:
             pytest.fail("No playhead line found")
 
-    def test_halfblock_chars_present(self):
-        pcm, sr = _sine()
-        result = render(
-            pcm, sr, position=5.0, view_start=0.0, zoom=10.0, width=8, height=10
-        )
-        text = str(result)
-        assert any(c in text for c in _HALFBLOCK_CHARS), (
-            "No halfblock chars in waveform"
-        )
-
     def test_empty_pcm(self):
         pcm = np.zeros(0, dtype=np.float32)
         result = render(

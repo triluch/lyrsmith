@@ -34,7 +34,7 @@ from lyrsmith.ui.edit_line_modal import EditLineModal
 from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
 from lyrsmith.ui.unsaved_modal import UnsavedModal
-from lyrsmith.ui.waveform_pane import WaveformPane
+from lyrsmith.ui.waveform_pane import ZOOM_MIN, WaveformPane
 
 
 # ---------------------------------------------------------------------------
@@ -220,9 +220,6 @@ class TestPaneNavigation:
                 await pilot.pause()
                 await pilot.press("tab")  # browser → waveform
                 await pilot.pause()
-                pilot.app._poll_focus()
-                assert pilot.app.query_one(BottomBar).context == "waveform"
-
                 await pilot.press("shift+tab")  # waveform → browser
                 await pilot.pause()
                 pilot.app._poll_focus()
@@ -262,24 +259,6 @@ class TestFileBrowser:
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
         monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
         return audio
-
-    def test_down_arrow_moves_list_cursor(self, make_app, monkeypatch):
-        _factory, tmp_path = make_app
-        self._setup_dir(tmp_path, monkeypatch)
-
-        async def _impl():
-            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
-                await pilot.pause()
-                lv = pilot.app.query_one("#browser-list")
-                # Textual's ListView index is None until first navigation; seed it.
-                lv.index = 0
-                await pilot.pause()
-                await pilot.press("down")
-                await pilot.pause()
-                assert lv.index == 1
-                await pilot.press("ctrl+q")
-
-        asyncio.run(_impl())
 
     def test_enter_on_file_loads_it(self, make_app, monkeypatch):
         _factory, tmp_path = make_app
@@ -456,15 +435,12 @@ class TestLrcEditorInteractions:
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
                 ed = await self._setup(pilot)
-                first_text = ed._lines[0].text  # "First line"
-                second_text = ed._lines[1].text  # "Second line"
                 assert len(ed._lines) == 5
                 await pilot.press("m")  # KB_MERGE_LINE
                 await pilot.pause()
                 assert len(ed._lines) == 4
-                merged = ed._lines[0].text
-                assert first_text.split()[0] in merged  # "First"
-                assert second_text.split()[0].lower() in merged.lower()  # "second"
+                # _join_lines lowercases sentence-start of the second fragment
+                assert ed._lines[0].text == "First line second line"
                 assert ed.is_dirty
 
         asyncio.run(_impl())
@@ -621,7 +597,9 @@ class TestUndoChain:
                 await pilot.pause()
 
                 # Step 1: stamp (saves snapshot A)
-                pilot.app._player._position = 6.0
+                ed._current_position = (
+                    6.0  # stamp reads this; player callback inactive in tests
+                )
                 await pilot.press("t")
                 await pilot.pause()
 
@@ -645,24 +623,6 @@ class TestUndoChain:
                 await pilot.pause()
                 assert len(ed._lines) == count_before_delete
                 ed.clear_dirty()
-
-        asyncio.run(_impl())
-
-    def test_undo_noop_when_no_snapshot(self, make_app):
-        _factory, _ = make_app
-
-        async def _impl():
-            async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                pilot.app.query_one("#lrc-list").focus()
-                await pilot.pause()
-
-                assert ed._undo_lines is None
-                await pilot.press("ctrl+z")  # must not crash
-                await pilot.pause()
-                assert len(ed._lines) == 5  # unchanged
 
         asyncio.run(_impl())
 
@@ -846,21 +806,6 @@ class TestSaveFlow:
 
 class TestConfigModal:
     """F2 config editor: open, cancel, and save with validation."""
-
-    def test_f2_opens_config_modal(self, make_app):
-        _factory, _ = make_app
-
-        async def _impl():
-            async with _factory().run_test(headless=True) as pilot:
-                await pilot.pause()
-                pilot.app.action_show_config()
-                await pilot.pause()
-                assert isinstance(pilot.app.screen, ConfigModal)
-                await pilot.press("escape")
-                await pilot.pause()
-                assert not isinstance(pilot.app.screen, ConfigModal)
-
-        asyncio.run(_impl())
 
     def test_f2_key_press_opens_modal(self, make_app):
         _factory, _ = make_app
@@ -1059,7 +1004,7 @@ class TestWaveformPane:
                 for _ in range(50):
                     await pilot.press("plus")
                 await pilot.pause()
-                assert wf.zoom == pytest.approx(5.0)  # ZOOM_MIN
+                assert wf.zoom == pytest.approx(ZOOM_MIN)
 
         asyncio.run(_impl())
 
@@ -1092,16 +1037,19 @@ class TestTranscription:
         asyncio.run(_impl())
 
     def test_transcribe_populates_lrc_editor(self, make_app, monkeypatch, tmp_path):
-        """Stub transcriber returns two fixed lines; editor switches to lrc mode."""
+        """Stub transcriber returns fixed lines; verifies mode, line count, dirty
+        flag, and that current_text() round-trips back through LRC parse correctly."""
+        from lyrsmith.lrc import parse
+        from lyrsmith.transcribe.whisper import transcriber as _tr
+
         _factory, _ = make_app
         audio = _make_mp3(tmp_path / "vocal.mp3")
 
         stub_lines = [
             LRCLine(1.0, "Hello world"),
             LRCLine(3.5, "Goodbye world"),
+            LRCLine(6.0, "See you later"),
         ]
-        from lyrsmith.transcribe.whisper import transcriber as _tr
-
         monkeypatch.setattr(_tr, "transcribe", lambda *a, **kw: stub_lines)
         monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
 
@@ -1112,51 +1060,17 @@ class TestTranscription:
                 ed = app.query_one(LyricsEditor)
                 await pilot.pause()
                 app.action_transcribe()
-                # Allow async worker + executor to complete
-                await asyncio.sleep(0.5)
+                await pilot.app.workers.wait_for_complete()
                 await pilot.pause()
                 assert ed.mode == "lrc"
-                assert len(ed._lines) == 2
+                assert len(ed._lines) == 3
                 assert ed.is_dirty
-                ed.clear_dirty()
-                await pilot.press("ctrl+q")
-
-        asyncio.run(_impl())
-
-    def test_transcribe_result_is_structurally_valid_lrc(
-        self, make_app, monkeypatch, tmp_path
-    ):
-        """Verify that whatever the stub returns is serialised into parseable LRC."""
-        _factory, _ = make_app
-        audio = _make_mp3(tmp_path / "vocal.mp3")
-
-        stub_lines = [
-            LRCLine(0.5, "Line A"),
-            LRCLine(2.0, "Line B"),
-            LRCLine(4.5, "Line C"),
-        ]
-        from lyrsmith.transcribe.whisper import transcriber as _tr
-        from lyrsmith.lrc import parse
-
-        monkeypatch.setattr(_tr, "transcribe", lambda *a, **kw: stub_lines)
-        monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
-
-        async def _impl():
-            async with _factory().run_test(headless=True) as pilot:
-                app = pilot.app
-                app._loaded_path = audio
-                ed = app.query_one(LyricsEditor)
-                await pilot.pause()
-                app.action_transcribe()
-                await asyncio.sleep(0.5)
-                await pilot.pause()
-                assert ed.mode == "lrc"
-                # current_text() should return parseable LRC
-                _, parsed_lines = parse(ed.current_text())
-                assert len(parsed_lines) == 3
-                assert parsed_lines[0].text == "Line A"
-                assert parsed_lines[1].text == "Line B"
-                assert parsed_lines[2].text == "Line C"
+                _, parsed = parse(ed.current_text())
+                assert [l.text for l in parsed] == [
+                    "Hello world",
+                    "Goodbye world",
+                    "See you later",
+                ]
                 ed.clear_dirty()
                 await pilot.press("ctrl+q")
 

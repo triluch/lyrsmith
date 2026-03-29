@@ -12,13 +12,19 @@ from pathlib import Path
 
 import pytest
 
+from unittest.mock import MagicMock
+
 from lyrsmith.metadata.cache import cache
 from lyrsmith.metadata.tags import (
+    _read_id3_uslt,
+    _read_lyrics_raw,
+    _read_vorbis_lyrics,
     is_audio_file,
     read_info,
     read_lyrics,
     write_lyrics,
 )
+import lyrsmith.metadata.tags as _tags_mod
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +170,25 @@ class TestLyricsIO:
         write_lyrics(mp3_file, lyrics)
         assert read_lyrics(mp3_file) == lyrics
 
+    def test_write_to_unsupported_extension_raises_runtime_error(self, tmp_path):
+        """write_lyrics must reject extensions outside the supported set."""
+        wav = tmp_path / "audio.wav"
+        wav.write_bytes(b"")
+        with pytest.raises(RuntimeError, match="not supported"):
+            write_lyrics(wav, "some lyrics")
+
+    def test_write_to_mp3_without_id3_header_creates_new_tag(self, tmp_path):
+        """A bare .mp3 with no ID3 header triggers the ID3NoHeaderError → ID3() fallback."""
+        bare = tmp_path / "bare.mp3"
+        bare.write_bytes(b"")  # no ID3 header at all
+        write_lyrics(bare, "Fresh lyrics")
+        assert _read_id3_uslt(bare) == "Fresh lyrics"
+
+    def test_read_on_unsupported_extension_returns_none(self, tmp_path):
+        """_read_lyrics_raw returns None for any extension not in the supported set."""
+        unsupported = tmp_path / "audio.wav"
+        assert _read_lyrics_raw(unsupported) is None
+
 
 # ---------------------------------------------------------------------------
 # Vorbis (FLAC / OGG / OPUS) lyrics I/O
@@ -200,6 +225,15 @@ class TestVorbisLyricsIO:
     def test_opus_write_then_read(self, opus_file):
         write_lyrics(opus_file, "OPUS lyrics")
         assert read_lyrics(opus_file) == "OPUS lyrics"
+
+    def test_read_vorbis_non_list_lyrics_value(self, tmp_path, monkeypatch):
+        """VorbisComment can occasionally return a bare string instead of a list;
+        _read_vorbis_lyrics must handle both via the isinstance(val, list) guard."""
+        mock_f = MagicMock()
+        mock_f.tags.get.return_value = "plain string lyrics"
+        monkeypatch.setattr(_tags_mod, "MutagenFile", lambda *a, **kw: mock_f)
+        result = _read_vorbis_lyrics(tmp_path / "test.flac")
+        assert result == "plain string lyrics"
 
 
 # ---------------------------------------------------------------------------
