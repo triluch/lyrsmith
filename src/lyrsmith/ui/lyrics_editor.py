@@ -15,6 +15,7 @@ from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView, TextArea
 
 from ..lrc import LRCLine, active_line_index, parse, serialize
+from ._fast_list_view import FastListView
 from .edit_line_modal import EditLineModal, EditLineResult
 from ..keybinds import (
     NUDGE_FINE,
@@ -128,8 +129,14 @@ class LyricsEditor(Widget):
         border: solid $panel-darken-2;
         layout: vertical;
     }
-    LyricsEditor:focus-within {
-        border: solid $accent;
+    LyricsEditor ListView:focus {
+        background-tint: $foreground 0%;
+    }
+    /* Always-focused cursor — specificity 0,2,3 beats ListView:focus 0,2,2. */
+    LyricsEditor ListView.always-focused-cursor ListItem.-highlight {
+        color: $block-cursor-foreground;
+        background: $block-cursor-background;
+        text-style: $block-cursor-text-style;
     }
     LyricsEditor #empty-hint {
         width: 1fr;
@@ -190,12 +197,16 @@ class LyricsEditor(Widget):
 
     def compose(self) -> ComposeResult:
         yield Label(_EMPTY_HINT, id="empty-hint")
-        lv = ListView(id="lrc-list")
+        lv = FastListView(id="lrc-list")
         lv.display = False
         yield lv
         ta = TextArea(id="plain-area")
         ta.display = False
         yield ta
+
+    def on_mount(self) -> None:
+        # Add class while ListView is empty → walk_children costs O(0).
+        self.query_one("#lrc-list", ListView).add_class("always-focused-cursor")
 
     # ------------------------------------------------------------------
     # Public API

@@ -43,9 +43,6 @@ class WaveformPane(Widget):
         border: solid $panel-darken-2;
         layout: vertical;
     }
-    WaveformPane:focus {
-        border: solid $accent;
-    }
     WaveformPane #wf-timestamp {
         width: 1fr;
         height: 1;

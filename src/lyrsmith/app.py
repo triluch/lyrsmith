@@ -8,11 +8,13 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
+from textual.widget import Widget
 
 from .audio.decoder import decode_to_pcm
 from .audio.player import Player
 from .config import Config, save as save_config
 from .keybinds import (
+    KB_CONFIG,
     KB_DISCARD_RELOAD,
     KB_HELP,
     KB_NEXT_LANG,
@@ -29,9 +31,33 @@ from .ui.file_browser import FileBrowser
 from .ui.left_pane import LeftPane
 from .ui.lyrics_editor import LyricsEditor
 from .ui.top_bar import TopBar
+from .ui.config_modal import ConfigModal
 from .ui.help_modal import HelpModal
 from .ui.unsaved_modal import UnsavedModal
 from .ui.waveform_pane import WaveformPane
+
+
+class IndicatorSegment(Widget):
+    """Thin focus indicator: renders ▀ half-blocks in $accent when .lit.
+
+    Filling the full widget width with ▀ makes the accent appear only in the
+    upper half of the character cell, giving a visually thin accent stripe.
+    Unlit: foreground = $panel → solid panel row, invisible against the bar.
+    """
+
+    DEFAULT_CSS = """
+    IndicatorSegment {
+        height: 1;
+        background: $background;
+        color: $panel;
+    }
+    IndicatorSegment.lit {
+        color: $accent;
+    }
+    """
+
+    def render(self) -> str:
+        return "\u2580" * self.content_size.width  # ▀
 
 
 class LyrsmithApp(App):
@@ -53,6 +79,18 @@ class LyrsmithApp(App):
     LyricsEditor {
         width: 1fr;
     }
+
+    /* Focus indicator row — sits between TopBar and content.
+       ▀ half-block: upper half = foreground ($panel unlit / $accent lit),
+       lower half = background ($background, matching content area) → thin
+       accent stripe at the top edge when lit, invisible otherwise. */
+    #indicator-top {
+        height: 1;
+        background: $panel;
+    }
+    .ind-left  { width: 25%; min-width: 22; max-width: 42; }
+    .ind-wave  { width: 14; }
+    .ind-edit  { width: 1fr; }
     """
 
     BINDINGS = [
@@ -63,6 +101,7 @@ class LyrsmithApp(App):
         Binding(KB_NEXT_MODEL, "next_model", "Model", show=False),
         Binding(KB_NEXT_LANG, "next_lang", "Language", show=False),
         Binding(KB_HELP, "show_help", "Help", show=False),
+        Binding(KB_CONFIG, "show_config", "Config", show=False),
     ]
 
     def __init__(self, initial_dir: Path, config: Config) -> None:
@@ -80,6 +119,10 @@ class LyrsmithApp(App):
 
     def compose(self) -> ComposeResult:
         yield TopBar()
+        with Horizontal(id="indicator-top"):
+            yield IndicatorSegment(id="ind-left", classes="ind-left")
+            yield IndicatorSegment(id="ind-wave", classes="ind-wave")
+            yield IndicatorSegment(id="ind-edit", classes="ind-edit")
         with Horizontal(id="content"):
             yield LeftPane(self._initial_dir)
             yield WaveformPane(self._player)
@@ -87,20 +130,34 @@ class LyrsmithApp(App):
         yield BottomBar()
 
     def on_mount(self) -> None:
-        wfp = self.query_one(WaveformPane)
-        wfp.set_zoom(self._config.waveform_zoom)
+        # Cache frequently accessed widgets to avoid O(n) DOM traversals in
+        # hot paths (_poll_focus fires ~60/s, _handle_tick fires ~10/s during play).
+        self._w_top = self.query_one(TopBar)
+        self._w_bar = self.query_one(BottomBar)
+        self._w_editor = self.query_one(LyricsEditor)
+        self._w_waveform = self.query_one(WaveformPane)
+        self._w_left = self.query_one(LeftPane)
+        # Indicator segments — one per pane, top row only.
+        self._ind = {
+            "left": self.query_one("#ind-left", IndicatorSegment),
+            "wave": self.query_one("#ind-wave", IndicatorSegment),
+            "edit": self.query_one("#ind-edit", IndicatorSegment),
+        }
 
-        top = self.query_one(TopBar)
-        top.set_model(self._config.whisper_model)
-        top.set_language(self._config.whisper_language)
+        self._w_waveform.set_zoom(self._config.waveform_zoom)
+        self._w_top.set_model(self._config.whisper_model)
+        self._w_top.set_language(self._config.whisper_language)
 
-        # Focus the file browser on startup
+        # Focus the file browser on startup; light its indicator immediately.
         self.query_one(FileBrowser).focus()
+        self._light_indicator("left")
 
-        # Poll focus changes to keep bottom bar in sync.
+        # Poll focus changes at ~60fps.
         # on_focus doesn't reliably bubble to App level in Textual v8.
+        # Running at 16ms means pane border switches (add + remove) always
+        # land in the same tick — no two borders visible simultaneously.
         self._last_focused: object = None
-        self.set_interval(0.15, self._poll_focus)
+        self.set_interval(1 / 60, self._poll_focus)
 
     # ------------------------------------------------------------------
     # Playback tick (comes from mpv thread via call_from_thread)
@@ -111,12 +168,9 @@ class LyrsmithApp(App):
 
     def _handle_tick(self, position: float) -> None:
         playing = self._player.is_playing
-        self.query_one(WaveformPane).update_position(position)
-        editor = self.query_one(LyricsEditor)
-        editor.set_playing(
-            playing
-        )  # keep editor in sync regardless of which pane initiated play
-        editor.update_position(position)
+        self._w_waveform.update_position(position)
+        self._w_editor.set_playing(playing)
+        self._w_editor.update_position(position)
 
     # ------------------------------------------------------------------
     # File loading
@@ -124,8 +178,7 @@ class LyrsmithApp(App):
 
     def on_file_browser_file_selected(self, event: FileBrowser.FileSelected) -> None:
         event.stop()
-        editor = self.query_one(LyricsEditor)
-        if editor.is_dirty:
+        if self._w_editor.is_dirty:
             self._pending_load = event.path
             self._pending_quit = False
             self.push_screen(
@@ -151,11 +204,10 @@ class LyrsmithApp(App):
         self._player.load(path)
 
         # Update top bar
-        top = self.query_one(TopBar)
-        top.set_song(info.display_title())
+        self._w_top.set_song(info.display_title())
 
         # Update file browser marker
-        self.query_one(LeftPane).set_loaded(path)
+        self._w_left.set_loaded(path)
 
         # Update bottom bar context
         self._update_bottom_bar()
@@ -168,13 +220,12 @@ class LyrsmithApp(App):
         )
 
         # Load lyrics into editor
-        editor = self.query_one(LyricsEditor)
         if lyrics_type == "lrc" and lyrics_text:
-            editor.load_lrc(lyrics_text)
+            self._w_editor.load_lrc(lyrics_text)
         else:
             # Plain text for existing plain lyrics or empty string for no lyrics —
             # always gives an editable area, never a dead hint screen.
-            editor.load_plain(lyrics_text or "")
+            self._w_editor.load_plain(lyrics_text or "")
 
         # Save last directory
         self._config.last_directory = str(path.parent)
@@ -184,9 +235,9 @@ class LyrsmithApp(App):
         loop = asyncio.get_running_loop()
         pcm, sr = await loop.run_in_executor(None, decode_to_pcm, path)
         if len(pcm) == 0:
-            self.query_one(TopBar).set_status("Waveform unavailable")
+            self._w_top.set_status("Waveform unavailable")
             return
-        self.query_one(WaveformPane).load_pcm(pcm, sr)
+        self._w_waveform.load_pcm(pcm, sr)
 
     # ------------------------------------------------------------------
     # Unsaved modal callback
@@ -220,8 +271,7 @@ class LyrsmithApp(App):
     # ------------------------------------------------------------------
 
     def action_quit_app(self) -> None:
-        editor = self.query_one(LyricsEditor)
-        if editor.is_dirty:
+        if self._w_editor.is_dirty:
             self._pending_quit = True
             self._pending_load = None
             self.push_screen(
@@ -240,21 +290,20 @@ class LyrsmithApp(App):
         if self._loaded_path is None:
             return
         lyrics_text = read_lyrics(self._loaded_path)
-        editor = self.query_one(LyricsEditor)
         if lyrics_text is None:
-            editor.load_empty()
+            self._w_editor.load_empty()
         else:
             from .lrc import is_lrc as _is_lrc
 
             if _is_lrc(lyrics_text):
-                editor.load_lrc(lyrics_text)
+                self._w_editor.load_lrc(lyrics_text)
             else:
-                editor.load_plain(lyrics_text)
-        self.query_one(TopBar).set_status("Reloaded from file")
+                self._w_editor.load_plain(lyrics_text)
+        self._w_top.set_status("Reloaded from file")
 
     def action_transcribe(self) -> None:
         if self._loaded_path is None:
-            self.query_one(TopBar).set_status("No file loaded")
+            self._w_top.set_status("No file loaded")
             return
         self.run_worker(
             self._run_transcription(self._loaded_path),
@@ -269,7 +318,7 @@ class LyrsmithApp(App):
         except ValueError:
             idx = -1
         self._config.whisper_model = models[(idx + 1) % len(models)]
-        self.query_one(TopBar).set_model(self._config.whisper_model)
+        self._w_top.set_model(self._config.whisper_model)
         save_config(self._config)
 
     def action_next_lang(self) -> None:
@@ -283,11 +332,27 @@ class LyrsmithApp(App):
         except ValueError:
             idx = -1
         self._config.whisper_language = langs[(idx + 1) % len(langs)]
-        self.query_one(TopBar).set_language(self._config.whisper_language)
+        self._w_top.set_language(self._config.whisper_language)
         save_config(self._config)
 
     def action_show_help(self) -> None:
         self.push_screen(HelpModal())
+
+    def action_show_config(self) -> None:
+        self.push_screen(ConfigModal(self._config), callback=self._config_modal_done)
+
+    def _config_modal_done(self, new_config: Config | None) -> None:
+        if new_config is None:
+            return
+        self._config = new_config
+        save_config(new_config)
+        self._w_top.set_model(new_config.whisper_model)
+        self._w_top.set_language(new_config.whisper_language)
+        self._w_top.set_status("Config saved")
+        # set_zoom posts ZoomChanged only if value changed, which triggers
+        # on_waveform_pane_zoom_changed → save_config again.  The double write
+        # is idempotent (same data) and only occurs when zoom actually changes.
+        self._w_waveform.set_zoom(new_config.waveform_zoom)
 
     # ------------------------------------------------------------------
     # Internals
@@ -295,35 +360,33 @@ class LyrsmithApp(App):
 
     def _save_config_with_dir(self) -> None:
         """Update last_directory to the current browser position then save."""
-        self._config.last_directory = str(self.query_one(LeftPane).current_directory)
+        self._config.last_directory = str(self._w_left.current_directory)
         save_config(self._config)
 
     def _do_save(self) -> bool:
         """Write current lyrics to the loaded file. Returns True on success."""
         if self._loaded_path is None:
             return False
-        editor = self.query_one(LyricsEditor)
-        text = editor.current_text()
+        text = self._w_editor.current_text()
         if not text:
-            self.query_one(TopBar).set_status("Nothing to save")
+            self._w_top.set_status("Nothing to save")
             return False
         try:
             write_lyrics(self._loaded_path, text)
-            self.query_one(TopBar).set_status("Saved")
+            self._w_top.set_status("Saved")
             # Clear dirty flag without reloading — avoids resetting editor
             # position and losing the active lyric highlight during playback.
-            self.query_one(LyricsEditor).clear_dirty()
+            self._w_editor.clear_dirty()
             return True
         except Exception as e:
-            self.query_one(TopBar).set_status(f"Save failed: {e}")
+            self._w_top.set_status(f"Save failed: {e}")
             return False
 
     async def _run_transcription(self, path: Path) -> None:
-        top = self.query_one(TopBar)
         loop = asyncio.get_running_loop()
 
         def _progress(msg: str) -> None:
-            self.call_from_thread(top.set_status, msg)
+            self.call_from_thread(self._w_top.set_status, msg)
 
         model = self._config.whisper_model
         language = self._config.whisper_language
@@ -343,14 +406,13 @@ class LyrsmithApp(App):
                 ),
             )
         except Exception as e:
-            top.set_status(f"Transcription failed: {e}")
+            self._w_top.set_status(f"Transcription failed: {e}")
             return
 
         lrc_text = serialize({}, lines)
-        editor = self.query_one(LyricsEditor)
-        editor.load_lrc(lrc_text)
-        editor.mark_dirty()
-        top.set_status(f"Transcribed — {len(lines)} lines (unsaved)")
+        self._w_editor.load_lrc(lrc_text)
+        self._w_editor.mark_dirty()
+        self._w_top.set_status(f"Transcribed — {len(lines)} lines (unsaved)")
 
     # ------------------------------------------------------------------
     # Focus tracking for bottom bar context
@@ -361,6 +423,33 @@ class LyrsmithApp(App):
         if focused is not self._last_focused:
             self._last_focused = focused
             self._update_bottom_bar()
+            self._update_indicators(focused)
+
+    def _light_indicator(self, pane: str) -> None:
+        """Light the given pane's indicator segment and unlit all others.
+
+        pane: 'left' | 'wave' | 'edit' | '' (none — modal / unknown focus).
+        Each segment is a childless IndicatorSegment; set_class is O(1).
+        """
+        for key, seg in self._ind.items():
+            seg.set_class(key == pane, "lit")
+
+    def _update_indicators(self, focused: object) -> None:
+        """Called from _poll_focus on every focus change.
+
+        The three indicator segments are set in one synchronous call —
+        exactly one is ever lit at a time, no flicker.
+        """
+        if focused is None:
+            self._light_indicator("")
+        elif self._in_widget(focused, LeftPane):
+            self._light_indicator("left")
+        elif self._in_widget(focused, WaveformPane):
+            self._light_indicator("wave")
+        elif self._in_widget(focused, LyricsEditor):
+            self._light_indicator("edit")
+        else:
+            self._light_indicator("")  # modal or unknown
 
     @staticmethod
     def _in_widget(focused, cls) -> bool:
@@ -370,27 +459,25 @@ class LyrsmithApp(App):
         return any(isinstance(a, cls) for a in focused.ancestors)
 
     def _update_bottom_bar(self) -> None:
-        bar = self.query_one(BottomBar)
-        editor = self.query_one(LyricsEditor)
-
         focused = self.focused
         if focused is None:
-            bar.set_context("empty")
+            self._w_bar.set_context("empty")
             return
 
         if self._in_widget(focused, WaveformPane):
-            bar.set_context("waveform")
+            self._w_bar.set_context("waveform")
         elif self._in_widget(focused, LyricsEditor):
-            if editor.mode == "lrc":
-                bar.set_context("lyrics-lrc")
-            elif editor.mode == "plain":
-                bar.set_context("lyrics-plain")
+            mode = self._w_editor.mode
+            if mode == "lrc":
+                self._w_bar.set_context("lyrics-lrc")
+            elif mode == "plain":
+                self._w_bar.set_context("lyrics-plain")
             else:
-                bar.set_context("empty")
+                self._w_bar.set_context("empty")
         elif self._in_widget(focused, LeftPane):
-            bar.set_context("browser")
+            self._w_bar.set_context("browser")
         else:
-            bar.set_context("empty")
+            self._w_bar.set_context("empty")
 
     # ------------------------------------------------------------------
     # Waveform seek → sync player
@@ -399,25 +486,25 @@ class LyrsmithApp(App):
     def on_waveform_pane_seek_requested(
         self, event: WaveformPane.SeekRequested
     ) -> None:
-        self.query_one(LyricsEditor).update_position(event.position)
+        self._w_editor.update_position(event.position)
 
     def on_lyrics_editor_seek_requested(
         self, event: LyricsEditor.SeekRequested
     ) -> None:
         self._player.seek(event.position)
-        self.query_one(WaveformPane).update_position(event.position)
+        self._w_waveform.update_position(event.position)
 
     def on_lyrics_editor_stop_playback_requested(
         self, _event: LyricsEditor.StopPlaybackRequested
     ) -> None:
         self._player.pause()
-        self.query_one(LyricsEditor).set_playing(False)
+        self._w_editor.set_playing(False)
 
     def on_lyrics_editor_play_pause_requested(
         self, _event: LyricsEditor.PlayPauseRequested
     ) -> None:
         self._player.toggle()
-        self.query_one(LyricsEditor).set_playing(self._player.is_playing)
+        self._w_editor.set_playing(self._player.is_playing)
 
     # ------------------------------------------------------------------
     # Zoom sync → save to config

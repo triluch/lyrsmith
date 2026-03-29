@@ -10,6 +10,7 @@ from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView
 
 from ..metadata.tags import is_audio_file
+from ._fast_list_view import FastListView
 
 
 class FileBrowser(Widget):
@@ -25,6 +26,19 @@ class FileBrowser(Widget):
     FileBrowser ListView {
         height: 1fr;
         background: transparent;
+    }
+    FileBrowser ListView:focus {
+        /* Suppress the default 5% foreground tint on focus.
+           Without this Textual repaints every ListItem on every Tab press,
+           which is O(n) and causes visible lag with large directories. */
+        background-tint: $foreground 0%;
+    }
+    /* Always-focused cursor: specificity 0,2,3 beats ListView:focus rule 0,2,2
+       so this wins in both focused and blurred states — interior never changes. */
+    FileBrowser ListView.always-focused-cursor ListItem.-highlight {
+        color: $block-cursor-foreground;
+        background: $block-cursor-background;
+        text-style: $block-cursor-text-style;
     }
     FileBrowser ListItem {
         padding: 0 1;
@@ -56,9 +70,10 @@ class FileBrowser(Widget):
             self.path = path
 
     class DirChanged(Message):
-        def __init__(self, path: Path) -> None:
+        def __init__(self, path: Path, audio_files: list[Path]) -> None:
             super().__init__()
             self.path = path
+            self.audio_files = audio_files
 
     # ------------------------------------------------------------------
 
@@ -71,9 +86,11 @@ class FileBrowser(Widget):
         self._loaded: Path | None = None
 
     def compose(self) -> ComposeResult:
-        yield ListView(id="browser-list")
+        yield FastListView(id="browser-list")
 
     def on_mount(self) -> None:
+        # Add class while ListView is still empty → update_node_styles walks 0 items.
+        self.query_one("#browser-list", ListView).add_class("always-focused-cursor")
         self._populate(self._path)
 
     def _populate(self, path: Path) -> None:
@@ -82,9 +99,11 @@ class FileBrowser(Widget):
         lv.clear()
         self._entries = []
 
+        all_items: list[ListItem] = []
+
         # ".." entry
         if path.parent != path:
-            lv.append(ListItem(Label(".."), classes="is-dotdot"))
+            all_items.append(ListItem(Label(".."), classes="is-dotdot"))
             self._entries.append(None)
 
         dirs: list[Path] = []
@@ -101,15 +120,19 @@ class FileBrowser(Widget):
             pass
 
         for d in dirs:
-            lv.append(ListItem(Label(f"{d.name}/"), classes="is-dir"))
+            all_items.append(ListItem(Label(f"{d.name}/"), classes="is-dir"))
             self._entries.append(d)
 
         for f in files:
             classes = "is-loaded" if (self._loaded and f == self._loaded) else ""
-            lv.append(ListItem(Label(f.name), classes=classes))
+            all_items.append(ListItem(Label(f.name), classes=classes))
             self._entries.append(f)
 
-        self.post_message(self.DirChanged(path))
+        # Mount all items in one batch — one layout pass instead of N.
+        if all_items:
+            lv.mount(*all_items)
+
+        self.post_message(self.DirChanged(path, list(files)))
 
     def set_loaded(self, path: Path | None) -> None:
         """Mark which file is currently loaded. Updates styles in-place, preserving cursor."""
