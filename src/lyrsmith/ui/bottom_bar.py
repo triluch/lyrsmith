@@ -204,7 +204,11 @@ class BottomBar(Widget):
 
     def watch_context(self, value: str) -> None:
         text = HINTS.get(value, "")
-        self.query_one("#hint-label", Label).update(text)
+        try:
+            self.query_one("#hint-label", Label).update(text)
+        except Exception:
+            # Widget not yet composed or being torn down — safe to ignore.
+            pass
 
     def set_context(self, ctx: str) -> None:
         self.context = ctx
