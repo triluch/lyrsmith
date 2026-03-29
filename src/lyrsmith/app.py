@@ -404,19 +404,30 @@ class LyrsmithApp(App):
 
         model = self._config.whisper_model
         language = self._config.whisper_language
+        max_words = self._config.whisper_max_words_per_line
 
         try:
-            # Load model (may be a no-op if already loaded)
+            # Load model (no-op when name and all hardware params are unchanged)
             await loop.run_in_executor(
                 None,
-                lambda: transcriber.load_model(model, on_progress=_progress),
+                lambda: transcriber.load_model(
+                    model,
+                    device=self._config.transcription_device,
+                    compute_type=self._config.compute_type,
+                    cpu_threads=self._config.intra_threads,
+                    num_workers=self._config.inter_threads,
+                    on_progress=_progress,
+                ),
             )
 
             # Transcribe
             lines = await loop.run_in_executor(
                 None,
                 lambda: transcriber.transcribe(
-                    path, language=language, on_progress=_progress
+                    path,
+                    language=language,
+                    on_progress=_progress,
+                    max_words_per_line=max_words,
                 ),
             )
         except Exception as e:

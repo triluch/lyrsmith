@@ -9,6 +9,8 @@ the loaded model and re-loads only when model/device changes.
 from __future__ import annotations
 
 import logging
+import math
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
@@ -32,27 +34,132 @@ AVAILABLE_MODELS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Segment post-processing
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _SegmentLike:
+    """Minimal segment shape used internally by the split post-processor.
+
+    Mirrors the fields we consume from faster-whisper Segment objects so
+    that split sub-segments can flow through the same LRCLine-building code
+    as real Whisper segments.
+    """
+
+    start: float
+    end: float
+    text: str
+    words: list = field(default_factory=list)  # faster-whisper Word objects
+
+
+def _split_segment(seg: _SegmentLike, max_words: int) -> list[_SegmentLike]:
+    """Recursively split *seg* at the largest inter-word pause gap.
+
+    Returns a list of one or more sub-segments each containing at most
+    *max_words* words.  When *max_words* is 0, or the segment is already
+    within the limit, or the segment has fewer than 2 words, returns
+    ``[seg]`` unchanged.
+
+    The split point is chosen by scoring each candidate position as
+    ``sqrt(gap) × min(i, n-i)²``.  The square-root compresses gap outliers
+    (Whisper's imprecise edge-word timing cannot dominate just by reporting an
+    unusually large value), while the quadratic position weight strongly favours
+    the centre: edge positions score 1, the centre scores up to ``(n//2)²``.
+    """
+    if max_words <= 0 or not seg.words or len(seg.words) <= max_words:
+        return [seg]
+    if len(seg.words) < 2:
+        return [seg]
+
+    n = len(seg.words)
+    # Score: sqrt(gap) × min(i, n-i)²
+    #
+    # Two complementary mechanisms:
+    #   sqrt(gap)        — compresses outliers so a 4× gap advantage becomes 2×,
+    #                      reducing Whisper's imprecise edge-word timing from
+    #                      dominating just because it reported a large gap there.
+    #   min(i, n-i)²     — quadratic position weight; edge positions score 1,
+    #                      the centre scores (n//2)².  For n=11 the centre gets
+    #                      25× the edge weight.
+    #
+    # Together: a 2 s edge outlier scores sqrt(2)×1 ≈ 1.41 while a 0.3 s
+    # phrase gap at the centre scores sqrt(0.3)×25 ≈ 13.7 — centre wins by 10×.
+    # A genuinely extreme edge pause (e.g. silence between verses) can still
+    # win, but typical Whisper timing noise at word boundaries cannot.
+    best_score = -1.0
+    best_idx = n // 2  # fallback: geometric midpoint
+    for i in range(1, n):
+        gap = max(seg.words[i].start - seg.words[i - 1].end, 0.0)
+        w = min(i, n - i)
+        score = math.sqrt(gap) * w * w
+        if score > best_score:
+            best_score = score
+            best_idx = i
+
+    first_words = seg.words[:best_idx]
+    second_words = seg.words[best_idx:]
+
+    first = _SegmentLike(
+        start=seg.start,
+        end=first_words[-1].end,
+        text="".join(w.word for w in first_words).strip(),
+        words=first_words,
+    )
+    second = _SegmentLike(
+        start=second_words[0].start,
+        end=seg.end,
+        text="".join(w.word for w in second_words).strip(),
+        words=second_words,
+    )
+
+    # Recurse so that each half is also split if still over the limit.
+    return _split_segment(first, max_words) + _split_segment(second, max_words)
+
+
+# ---------------------------------------------------------------------------
+# Transcriber
+# ---------------------------------------------------------------------------
+
+
 class Transcriber:
     def __init__(self) -> None:
         self._model: WhisperModel | None = None
-        self._model_name: str = ""
+        # Full key: (name, device, compute_type, cpu_threads, num_workers).
+        # Any change to any element triggers a reload on the next call.
+        self._model_key: tuple = ()
 
     def load_model(
         self,
         name: str,
+        device: str = "auto",
+        compute_type: str = "default",
+        cpu_threads: int = 0,
+        num_workers: int = 1,
         on_progress: Callable[[str], None] | None = None,
     ) -> None:
-        """Load (or reload) model. Emits status strings via on_progress."""
-        if self._model is not None and self._model_name == name:
+        """Load (or reload) model. Emits status strings via on_progress.
+
+        Skips loading when the model is already loaded with identical
+        configuration (name, device, compute type, and thread counts).
+        """
+        new_key = (name, device, compute_type, cpu_threads, num_workers)
+        if self._model is not None and self._model_key == new_key:
             return
 
         if on_progress:
             on_progress(f"Loading model '{name}'…")
 
         # faster-whisper downloads to ~/.cache/huggingface if not present.
-        # device="auto" picks CUDA if available, else CPU.
-        self._model = WhisperModel(name, device="auto", compute_type="default")
-        self._model_name = name
+        self._model = WhisperModel(
+            name,
+            device=device,
+            compute_type=compute_type,
+            cpu_threads=cpu_threads,
+            num_workers=num_workers,
+        )
+        self._model_key = new_key
 
         if on_progress:
             on_progress(f"Model '{name}' ready")
@@ -62,10 +169,14 @@ class Transcriber:
         path: Path,
         language: str | None = None,
         on_progress: Callable[[str], None] | None = None,
+        max_words_per_line: int = 0,
     ) -> list[LRCLine]:
-        """
-        Transcribe audio file and return LRC lines (one per whisper segment).
-        language=None or 'auto' means auto-detect.
+        """Transcribe *path* and return one LRCLine per (post-processed) segment.
+
+        language=None / 'auto' — auto-detect.
+        max_words_per_line — when > 0, long segments are recursively split at
+            the largest inter-word pause gap until each segment has at most
+            this many words.  0 disables splitting.
         """
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -74,15 +185,28 @@ class Transcriber:
             on_progress(f"Transcribing {path.name}…")
 
         lang = None if (language is None or language == "auto") else language
-        segments, _info = self._model.transcribe(
-            str(path), language=lang, word_timestamps=True
+        raw_segments, _info = self._model.transcribe(
+            str(path),
+            language=lang,
+            word_timestamps=True,
         )
 
+        # Materialise the lazy iterator, wrap each segment in _SegmentLike,
+        # then apply the word-count splitter before any further processing.
+        segs: list[_SegmentLike] = []
+        for seg in raw_segments:
+            wrapped = _SegmentLike(
+                start=seg.start,
+                end=seg.end,
+                text=seg.text,
+                words=list(seg.words or []),
+            )
+            segs.extend(_split_segment(wrapped, max_words_per_line))
+
         lines: list[LRCLine] = []
-        for seg in segments:
+        for seg in segs:
             words = [
-                WordTiming(word=w.word, start=w.start, end=w.end)
-                for w in (seg.words or [])
+                WordTiming(word=w.word, start=w.start, end=w.end) for w in seg.words
             ]
             # Use the first word's start time — it's more accurate than the
             # segment start, which often includes leading silence or is
@@ -100,7 +224,7 @@ class Transcriber:
 
     @property
     def loaded_model(self) -> str:
-        return self._model_name
+        return self._model_key[0] if self._model_key else ""
 
 
 # Module-level shared transcriber

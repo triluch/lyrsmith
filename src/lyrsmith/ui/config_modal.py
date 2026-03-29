@@ -154,6 +154,14 @@ class ConfigModal(ModalScreen[Config | None]):
                         id="f-inter-threads",
                         classes="field-input",
                     )
+                with Horizontal(classes="field-row"):
+                    yield Label("Max words/line [WIP] (0=off)", classes="field-label")
+                    yield Input(
+                        value=str(cfg.whisper_max_words_per_line),
+                        placeholder="0  (e.g. 10 to split long segments)",
+                        id="f-max-words-per-line",
+                        classes="field-input",
+                    )
 
                 # ── Display ───────────────────────────────────────────────
                 yield Label("Display", classes="section-header")
@@ -207,10 +215,13 @@ class ConfigModal(ModalScreen[Config | None]):
 
             intra_threads = int(self._get("f-intra-threads") or "0")
             inter_threads = int(self._get("f-inter-threads") or "1")
+            max_words_per_line = int(self._get("f-max-words-per-line") or "0")
             if intra_threads < 0:
                 raise ValueError("intra threads must be >= 0")
             if inter_threads < 1:
                 raise ValueError("inter threads must be >= 1")
+            if max_words_per_line < 0:
+                raise ValueError("max words/line must be >= 0")
 
             waveform_zoom = float(self._get("f-waveform-zoom") or "20.0")
             if waveform_zoom <= 0:
@@ -230,6 +241,7 @@ class ConfigModal(ModalScreen[Config | None]):
                 intra_threads=intra_threads,
                 inter_threads=inter_threads,
                 compute_type=compute_type,
+                whisper_max_words_per_line=max_words_per_line,
                 last_directory=self._cfg.last_directory,
             )
         )

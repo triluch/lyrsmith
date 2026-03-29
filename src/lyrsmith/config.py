@@ -27,6 +27,10 @@ class Config:
     intra_threads: int = 0  # 0 = let ctranslate2 decide
     inter_threads: int = 1
     compute_type: str = "default"  # default / int8 / float16 / float32
+    # Segment splitting — post-process long Whisper segments by splitting at the
+    # largest inter-word pause gap until each segment has at most this many words.
+    # 0 disables splitting and lets Whisper decide segment boundaries.
+    whisper_max_words_per_line: int = 0
     last_directory: str = ""
 
 
