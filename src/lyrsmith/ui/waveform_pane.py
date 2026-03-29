@@ -16,15 +16,21 @@ from ..keybinds import (
     KB_SEEK_BACK_LARGE,
     KB_SEEK_FWD,
     KB_SEEK_FWD_LARGE,
+    KB_VOL_DOWN,
+    KB_VOL_UP,
     KB_ZOOM_IN,
     KB_ZOOM_OUT,
     SEEK_SMALL,
     SEEK_LARGE,
+    VOL_STEP,
 )
 
 ZOOM_STEP = 5.0
 ZOOM_MIN = 5.0
 ZOOM_MAX = 120.0
+
+VOL_MIN = 0.0
+VOL_MAX = 100.0
 
 
 def _fmt_ts(seconds: float) -> str:
@@ -35,6 +41,11 @@ def _fmt_ts(seconds: float) -> str:
     s = total_s % 60
     m = total_s // 60
     return f"[{m:02d}:{s:02d}.{cs:02d}]"
+
+
+def _fmt_vol(volume: float) -> str:
+    """Format volume as 'vol: NN%'."""
+    return f"vol: {int(round(volume))}%"
 
 
 class WaveformPane(Widget):
@@ -48,6 +59,13 @@ class WaveformPane(Widget):
         height: 1;
         text-align: center;
         color: $accent;
+        background: transparent;
+    }
+    WaveformPane #wf-volume {
+        width: 1fr;
+        height: 1;
+        text-align: center;
+        color: $text-muted;
         background: transparent;
     }
     WaveformPane #wf-display {
@@ -70,6 +88,11 @@ class WaveformPane(Widget):
             super().__init__()
             self.zoom = zoom
 
+    class VolumeChanged(Message):
+        def __init__(self, volume: float) -> None:
+            super().__init__()
+            self.volume = volume
+
     def __init__(self, player: Player) -> None:
         super().__init__()
         self._player = player
@@ -78,9 +101,11 @@ class WaveformPane(Widget):
         self._position: float = 0.0
         self._view_start: float = 0.0
         self._zoom: float = 20.0
+        self._volume: float = 100.0
 
     def compose(self) -> ComposeResult:
         yield Label(_fmt_ts(0.0), id="wf-timestamp")
+        yield Label(_fmt_vol(self._volume), id="wf-volume")
         yield Static("", id="wf-display")
 
     # ------------------------------------------------------------------
@@ -102,6 +127,15 @@ class WaveformPane(Widget):
         if changed:
             self.post_message(self.ZoomChanged(self._zoom))
 
+    def set_volume(self, volume: float) -> None:
+        clamped = max(VOL_MIN, min(VOL_MAX, volume))
+        changed = clamped != self._volume
+        self._volume = clamped
+        self._player.volume = clamped
+        self._redraw_volume()
+        if changed:
+            self.post_message(self.VolumeChanged(self._volume))
+
     def update_position(self, position: float) -> None:
         self._position = position
         self._view_start = wf.compute_view_start(self._view_start, position, self._zoom)
@@ -115,17 +149,24 @@ class WaveformPane(Widget):
     def zoom(self) -> float:
         return self._zoom
 
+    @property
+    def volume(self) -> float:
+        return self._volume
+
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
+
+    def _redraw_volume(self) -> None:
+        self.query_one("#wf-volume", Label).update(_fmt_vol(self._volume))
 
     def _redraw(self) -> None:
         self.query_one("#wf-timestamp", Label).update(_fmt_ts(self._position))
 
         display = self.query_one("#wf-display", Static)
         w = self.content_size.width
-        # Subtract 1 for the timestamp row.
-        h = max(0, self.content_size.height - 1)
+        # Subtract 2 for the timestamp and volume rows.
+        h = max(0, self.content_size.height - 2)
         if w <= 0 or h <= 0:
             return
 
@@ -175,6 +216,12 @@ class WaveformPane(Widget):
         elif key == KB_ZOOM_OUT:
             event.stop()
             self.set_zoom(self._zoom + ZOOM_STEP)
+        elif key == KB_VOL_UP:
+            event.stop()
+            self.set_volume(self._volume + VOL_STEP)
+        elif key == KB_VOL_DOWN:
+            event.stop()
+            self.set_volume(self._volume - VOL_STEP)
 
     def _seek(self, delta: float) -> None:
         target = max(0.0, self._position + delta)

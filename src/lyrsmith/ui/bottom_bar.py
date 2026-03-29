@@ -34,6 +34,8 @@ from ..keybinds import (
     KB_TRANSCRIBE,
     KB_UNDO,
     KB_UP,
+    KB_VOL_DOWN,
+    KB_VOL_UP,
     KB_ZOOM_IN,
     KB_ZOOM_OUT,
     KB_LINE_UP,
@@ -143,6 +145,7 @@ def _build_hints() -> dict[str, str]:
                 _kk(KB_SEEK_BACK, KB_SEEK_FWD, f"Seek {int(SEEK_SMALL)}s"),
                 _kk(KB_SEEK_BACK_LARGE, KB_SEEK_FWD_LARGE, f"Seek {int(SEEK_LARGE)}s"),
                 _kk(KB_ZOOM_IN, KB_ZOOM_OUT, "Zoom", "/"),
+                _kk(KB_VOL_DOWN, KB_VOL_UP, "Volume", "/"),
                 _k(KB_SAVE, "Save"),
                 _k(KB_QUIT, "Quit"),
             ]

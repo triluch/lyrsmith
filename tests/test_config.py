@@ -24,6 +24,9 @@ class TestDefaults:
     def test_default_zoom(self):
         assert Config().waveform_zoom == 20.0
 
+    def test_default_volume(self):
+        assert Config().volume == 100.0
+
     def test_default_last_directory(self):
         assert Config().last_directory == ""
 

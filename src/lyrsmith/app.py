@@ -152,6 +152,7 @@ class LyrsmithApp(App):
         }
 
         self._w_waveform.set_zoom(self._config.waveform_zoom)
+        self._w_waveform.set_volume(self._config.volume)
         self._w_top.set_model(self._config.whisper_model)
         self._w_top.set_language(self._config.whisper_language)
 
@@ -536,6 +537,12 @@ class LyrsmithApp(App):
 
     def on_waveform_pane_zoom_changed(self, event: WaveformPane.ZoomChanged) -> None:
         self._config.waveform_zoom = event.zoom
+        save_config(self._config)
+
+    def on_waveform_pane_volume_changed(
+        self, event: WaveformPane.VolumeChanged
+    ) -> None:
+        self._config.volume = event.volume
         save_config(self._config)
 
     # ------------------------------------------------------------------

@@ -8,7 +8,7 @@ Coverage:
   - Undo chain (stamp→delete, ctrl+z restores state)
   - Save flow (dirty flag, ctrl+s, UnsavedModal back/discard branches)
   - Config modal (F2 opens, cancel is safe, save updates config)
-  - Waveform pane (space toggles play, seek keys, zoom keys)
+  - Waveform pane (space toggles play, seek keys, zoom keys, volume keys)
   - Transcription worker (no-file guard, successful run populates LRC editor)
 
 Transcription content is non-deterministic in production; all transcription
@@ -37,7 +37,7 @@ from lyrsmith.ui.edit_line_modal import EditLineModal
 from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
 from lyrsmith.ui.unsaved_modal import UnsavedModal
-from lyrsmith.ui.waveform_pane import ZOOM_MIN, WaveformPane
+from lyrsmith.ui.waveform_pane import VOL_MAX, ZOOM_MIN, WaveformPane
 
 
 # ---------------------------------------------------------------------------
@@ -1589,6 +1589,76 @@ class TestWaveformPane:
                     await pilot.press("plus")
                 await pilot.pause()
                 assert wf.zoom == pytest.approx(ZOOM_MIN)
+
+        asyncio.run(_impl())
+
+    def test_up_increases_volume(self, make_app):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                await self._focus_waveform(pilot)
+                wf = pilot.app.query_one(WaveformPane)
+                wf.set_volume(50.0)
+                await pilot.press("up")
+                await pilot.pause()
+                assert wf.volume > 50.0
+
+        asyncio.run(_impl())
+
+    def test_down_decreases_volume(self, make_app):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                await self._focus_waveform(pilot)
+                wf = pilot.app.query_one(WaveformPane)
+                wf.set_volume(50.0)
+                await pilot.press("down")
+                await pilot.pause()
+                assert wf.volume < 50.0
+
+        asyncio.run(_impl())
+
+    def test_volume_clamped_at_zero(self, make_app):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                await self._focus_waveform(pilot)
+                wf = pilot.app.query_one(WaveformPane)
+                for _ in range(30):
+                    await pilot.press("down")
+                await pilot.pause()
+                assert wf.volume == pytest.approx(0.0)
+
+        asyncio.run(_impl())
+
+    def test_volume_clamped_at_max(self, make_app):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                await self._focus_waveform(pilot)
+                wf = pilot.app.query_one(WaveformPane)
+                for _ in range(30):
+                    await pilot.press("up")
+                await pilot.pause()
+                assert wf.volume == pytest.approx(VOL_MAX)
+
+        asyncio.run(_impl())
+
+    def test_volume_change_saved_to_config(self, make_app):
+        _factory, cfg = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                await self._focus_waveform(pilot)
+                wf = pilot.app.query_one(WaveformPane)
+                wf.set_volume(40.0)
+                await pilot.press("up")  # → 45%
+                await pilot.pause()
+                assert pilot.app._config.volume == pytest.approx(45.0)
 
         asyncio.run(_impl())
 

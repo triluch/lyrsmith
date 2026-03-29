@@ -22,6 +22,7 @@ class Config:
         default_factory=lambda: ["auto", "en", "pl", "de", "fr", "es", "ja", "zh"]
     )
     waveform_zoom: float = 20.0  # seconds visible in waveform pane
+    volume: float = 100.0  # playback volume (0–100)
     # Transcription acceleration
     transcription_device: str = "cpu"  # cpu / cuda / hip
     intra_threads: int = 0  # 0 = let ctranslate2 decide

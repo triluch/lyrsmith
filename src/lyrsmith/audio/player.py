@@ -150,6 +150,14 @@ class Player:
     # ------------------------------------------------------------------
 
     @property
+    def volume(self) -> float:
+        return float(self._mpv.volume or 100.0)
+
+    @volume.setter
+    def volume(self, value: float) -> None:
+        self._mpv.volume = max(0.0, min(100.0, value))
+
+    @property
     def is_playing(self) -> bool:
         return not bool(self._mpv.pause)
 

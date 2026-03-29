@@ -19,6 +19,9 @@ KB_SEEK_FWD_LARGE = "shift+right"  # +30s
 KB_SEEK_BACK_LARGE = "shift+left"  # -30s
 KB_ZOOM_IN = "plus"
 KB_ZOOM_OUT = "minus"
+KB_VOL_UP = "up"
+KB_VOL_DOWN = "down"
+VOL_STEP = 5.0
 
 # Lyrics editor - LRC mode
 KB_LINE_UP = "up"
