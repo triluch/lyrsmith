@@ -100,7 +100,7 @@ def _op_merge(lines: list[LRCLine], idx: int) -> tuple[list[LRCLine], int]:
     if not (0 <= idx < len(lines) - 1):
         return lines, idx
     merged = _join_lines(lines[idx].text, lines[idx + 1].text)
-    lines[idx] = LRCLine(lines[idx].timestamp, merged)
+    lines[idx] = LRCLine(lines[idx].timestamp, merged, end=lines[idx + 1].end)
     lines.pop(idx + 1)
     return lines, idx
 
@@ -152,8 +152,16 @@ class LyricsEditor(Widget):
     }
     LyricsEditor ListItem {
         padding: 0 1;
+        layout: horizontal;
     }
-    LyricsEditor ListItem.active-line Label {
+    LyricsEditor ListItem .line-text {
+        width: 1fr;
+    }
+    LyricsEditor ListItem .end-ts {
+        width: auto;
+        color: #627080;
+    }
+    LyricsEditor ListItem.active-line .line-text {
         text-style: bold;
         color: $accent;
     }
@@ -215,6 +223,11 @@ class LyricsEditor(Widget):
     def load_lrc(self, text: str) -> None:
         """Load LRC lyrics text into editor."""
         meta, lines = parse(text)
+        self.load_lines(meta, lines)
+
+    def load_lines(self, meta: dict[str, str], lines: list[LRCLine]) -> None:
+        """Load pre-parsed LRC lines directly, preserving any extra fields
+        (e.g. end timestamps from transcription) that the text round-trip drops."""
         self._meta = meta
         self._lines = lines
         self._mode = "lrc"
@@ -304,7 +317,14 @@ class LyricsEditor(Widget):
         lv.clear()
         for i, line in enumerate(self._lines):
             classes = "active-line" if i == self._active_idx else ""
-            lv.append(ListItem(Label(line.display_str()), classes=classes))
+            end_str = line.end_timestamp_str() or ""
+            lv.append(
+                ListItem(
+                    Label(line.display_str(), classes="line-text"),
+                    Label(end_str, classes="end-ts"),
+                    classes=classes,
+                )
+            )
 
     def _refresh_active_style(self) -> None:
         lv = self.query_one("#lrc-list", ListView)
@@ -316,9 +336,8 @@ class LyricsEditor(Widget):
             else:
                 item.remove_class("active-line")
             # Update label text (timestamp may have changed)
-            label = item.query_one(Label)
             if i < len(self._lines):
-                label.update(self._lines[i].display_str())
+                item.query_one(".line-text", Label).update(self._lines[i].display_str())
 
     def _jump_to_line(self, idx: int) -> None:
         """80/20 paged scroll: if idx is past 80% of visible rows, jump to 20%."""
@@ -340,7 +359,9 @@ class LyricsEditor(Widget):
 
     def _save_undo(self) -> None:
         """Snapshot current lines + cursor for single-level undo."""
-        self._undo_lines = [LRCLine(l.timestamp, l.text) for l in self._lines]
+        self._undo_lines = [
+            LRCLine(l.timestamp, l.text, end=l.end) for l in self._lines
+        ]
         self._undo_cursor = self._cursor_idx
 
     def _apply_undo(self) -> None:
@@ -502,7 +523,11 @@ class LyricsEditor(Widget):
 
             elif result.action == "split":
                 self._save_undo()
+                # The original segment's end belongs to the second half; the
+                # first half no longer has a known end after the cut.
+                original_end = self._lines[idx].end
                 self._lines[idx].text = result.text
+                self._lines[idx].end = None
                 # Second half timestamp: use current playback position when it
                 # falls after the current line; otherwise use the midpoint to the
                 # next line (avoids hardcoded offset colliding with neighbour).
@@ -517,7 +542,9 @@ class LyricsEditor(Widget):
                     if self._current_position > first_ts
                     else (first_ts + next_ts) / 2
                 )
-                self._lines.insert(idx + 1, LRCLine(new_ts, result.second))
+                self._lines.insert(
+                    idx + 1, LRCLine(new_ts, result.second, end=original_end)
+                )
                 self._mark_dirty()
                 self._refresh_list()
                 self._set_cursor(idx)

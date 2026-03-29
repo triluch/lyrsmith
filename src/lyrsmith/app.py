@@ -23,7 +23,7 @@ from .keybinds import (
     KB_SAVE,
     KB_TRANSCRIBE,
 )
-from .lrc import serialize
+
 from .metadata.tags import read_info, read_lyrics, write_lyrics
 from .transcribe.whisper import AVAILABLE_MODELS, transcriber
 from .ui.bottom_bar import BottomBar
@@ -409,8 +409,7 @@ class LyrsmithApp(App):
             self._w_top.set_status(f"Transcription failed: {e}")
             return
 
-        lrc_text = serialize({}, lines)
-        self._w_editor.load_lrc(lrc_text)
+        self._w_editor.load_lines({}, lines)
         self._w_editor.mark_dirty()
         self._w_top.set_status(f"Transcribed — {len(lines)} lines (unsaved)")
 

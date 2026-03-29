@@ -9,18 +9,28 @@ _TIMESTAMP_RE = re.compile(r"\[(\d{1,2}):(\d{2})\.(\d{2,3})\]")
 _META_RE = re.compile(r"^\[(\w+):(.*?)\]\s*$")
 
 
+def _fmt_ts(seconds: float) -> str:
+    """Format seconds as [MM:SS.cc]."""
+    total_cs = round(seconds * 100)
+    cs = total_cs % 100
+    total_s = total_cs // 100
+    s = total_s % 60
+    m = total_s // 60
+    return f"[{m:02d}:{s:02d}.{cs:02d}]"
+
+
 @dataclass
 class LRCLine:
-    timestamp: float  # seconds
+    timestamp: float  # seconds (segment start)
     text: str
+    end: float | None = None  # optional segment end time (populated by transcriber)
 
     def timestamp_str(self) -> str:
-        total_cs = round(self.timestamp * 100)
-        cs = total_cs % 100
-        total_s = total_cs // 100
-        s = total_s % 60
-        m = total_s // 60
-        return f"[{m:02d}:{s:02d}.{cs:02d}]"
+        return _fmt_ts(self.timestamp)
+
+    def end_timestamp_str(self) -> str | None:
+        """Return end time formatted as [MM:SS.cc], or None if not set."""
+        return _fmt_ts(self.end) if self.end is not None else None
 
     def __str__(self) -> str:
         """Serialisation format — no padding, written to tags as-is."""

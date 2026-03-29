@@ -78,7 +78,9 @@ class Transcriber:
 
         lines: list[LRCLine] = []
         for seg in segments:
-            lines.append(LRCLine(timestamp=seg.start, text=seg.text.strip()))
+            lines.append(
+                LRCLine(timestamp=seg.start, text=seg.text.strip(), end=seg.end)
+            )
 
         if on_progress:
             on_progress(f"Done — {len(lines)} lines")
