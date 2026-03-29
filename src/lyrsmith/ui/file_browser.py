@@ -245,18 +245,6 @@ class FileBrowser(Widget):
             elif self._path.parent != self._path:
                 self._populate(self._path.parent)
 
-        elif event.key in ("pagedown", "page_down"):
-            event.stop()
-            lv = self.query_one("#browser-list", ListView)
-            page = max(1, lv.size.height)
-            lv.index = min((lv.index or 0) + page, len(self._entries) - 1)
-
-        elif event.key in ("pageup", "page_up"):
-            event.stop()
-            lv = self.query_one("#browser-list", ListView)
-            page = max(1, lv.size.height)
-            lv.index = max(0, (lv.index or 0) - page)
-
     def _index_of(self, item: ListItem) -> int | None:
         lv = self.query_one("#browser-list", ListView)
         for i, child in enumerate(lv.children):

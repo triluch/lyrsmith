@@ -522,6 +522,94 @@ class TestFileBrowser:
 
         asyncio.run(_impl())
 
+    def test_down_with_filter_does_not_visit_hidden_items(self, make_app, monkeypatch):
+        """Arrow-down must stop at the last visible item, not fall into hidden ones."""
+        _factory, tmp_path = make_app
+        self._setup_multi(tmp_path, monkeypatch)  # jazz, rock, rock_ballad
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                lv = pilot.app.query_one("#browser-list")
+                # "j" matches only jazz.mp3; rock* are hidden
+                await pilot.press("j")
+                await pilot.pause()
+                idx_before = lv.index
+                # Press down — no visible items after jazz.mp3, cursor must not move
+                await pilot.press("down")
+                await pilot.pause()
+                assert lv.index == idx_before
+                # Confirm we're not on a hidden item
+                from textual.widgets import ListItem as _LI
+
+                assert lv.children[lv.index].display
+
+        asyncio.run(_impl())
+
+    def test_up_with_filter_skips_hidden_items(self, make_app, monkeypatch):
+        """Arrow-up must skip hidden items and land on the nearest visible one."""
+        _factory, tmp_path = make_app
+        self._setup_multi(
+            tmp_path, monkeypatch
+        )  # jazz(hidden), rock(vis), rock_ballad(vis)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                lv = pilot.app.query_one("#browser-list")
+                # "rock" → rock.mp3 and rock_ballad visible; jazz hidden
+                await pilot.press("r")
+                await pilot.pause()
+                await pilot.press("o")
+                await pilot.pause()
+                await pilot.press("c")
+                await pilot.pause()
+                await pilot.press("k")
+                await pilot.pause()
+                # Cursor is on rock.mp3 (first match).  Press up — jazz is hidden,
+                # so we should skip it and land on ".." (always visible).
+                await pilot.press("up")
+                await pilot.pause()
+                from textual.widgets import ListItem as _LI
+
+                assert lv.children[lv.index].display  # must not land on a hidden item
+
+        asyncio.run(_impl())
+
+    def test_down_with_filter_navigates_between_visible_items(
+        self, make_app, monkeypatch
+    ):
+        """Arrow-down with filter navigates correctly between visible items."""
+        _factory, tmp_path = make_app
+        self._setup_multi(tmp_path, monkeypatch)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                lv = pilot.app.query_one("#browser-list")
+                # "rock" → rock.mp3 and rock_ballad both visible; jazz hidden between them
+                await pilot.press("r")
+                await pilot.pause()
+                await pilot.press("o")
+                await pilot.pause()
+                await pilot.press("c")
+                await pilot.pause()
+                await pilot.press("k")
+                await pilot.pause()
+                idx_rock = lv.index  # first match: rock.mp3
+                await pilot.press("down")
+                await pilot.pause()
+                idx_after = lv.index
+                assert idx_after > idx_rock  # moved forward
+                from textual.widgets import ListItem as _LI
+
+                assert lv.children[idx_after].display  # landed on a visible item
+                assert fb._entries[idx_after] is not None
+                assert "rock" in fb._entries[idx_after].name.lower()
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestLrcEditorInteractions
