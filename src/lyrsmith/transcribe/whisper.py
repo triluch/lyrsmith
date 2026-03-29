@@ -14,7 +14,7 @@ from typing import Callable
 
 from faster_whisper import WhisperModel
 
-from ..lrc import LRCLine
+from ..lrc import LRCLine, WordTiming
 
 # Silence noisy loggers from HuggingFace / ctranslate2 that would
 # otherwise leak through to the terminal and corrupt the TUI.
@@ -74,12 +74,23 @@ class Transcriber:
             on_progress(f"Transcribing {path.name}…")
 
         lang = None if (language is None or language == "auto") else language
-        segments, _info = self._model.transcribe(str(path), language=lang)
+        segments, _info = self._model.transcribe(
+            str(path), language=lang, word_timestamps=True
+        )
 
         lines: list[LRCLine] = []
         for seg in segments:
+            words = [
+                WordTiming(word=w.word, start=w.start, end=w.end)
+                for w in (seg.words or [])
+            ]
+            # Use the first word's start time — it's more accurate than the
+            # segment start, which often includes leading silence or is
+            # anchored to the previous segment boundary rather than the actual
+            # vocal onset.  Fall back to seg.start when no words are available.
+            ts = words[0].start if words else seg.start
             lines.append(
-                LRCLine(timestamp=seg.start, text=seg.text.strip(), end=seg.end)
+                LRCLine(timestamp=ts, text=seg.text.strip(), end=seg.end, words=words)
             )
 
         if on_progress:

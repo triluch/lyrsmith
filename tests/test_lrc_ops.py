@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from lyrsmith.lrc import LRCLine
+from lyrsmith.lrc import LRCLine, WordTiming
 from lyrsmith.ui.lyrics_editor import (
     LyricsEditor,
     _op_delete,
@@ -17,6 +17,10 @@ from lyrsmith.ui.lyrics_editor import (
 
 def _make(specs: list[tuple[float, str]]) -> list[LRCLine]:
     return [LRCLine(ts, text) for ts, text in specs]
+
+
+def _wt(word: str, start: float, end: float) -> WordTiming:
+    return WordTiming(word=word, start=start, end=end)
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +181,44 @@ class TestOpMerge:
         result, _ = _op_merge(lines, 0)
         assert " I " in result[0].text
 
+    def test_merge_concatenates_words(self):
+        """Merged line should carry words from both original lines in order."""
+        w1 = _wt(" Hello", 1.0, 1.3)
+        w2 = _wt(" world", 2.0, 2.4)
+        lines = [
+            LRCLine(1.0, "Hello", words=[w1]),
+            LRCLine(2.0, "World", words=[w2]),
+        ]
+        result, _ = _op_merge(lines, 0)
+        assert result[0].words == [w1, w2]
+
+    def test_merge_words_empty_when_neither_has_words(self):
+        lines = _make([(1.0, "Hello"), (2.0, "World")])
+        result, _ = _op_merge(lines, 0)
+        assert result[0].words == []
+
+    def test_merge_partial_words_combined(self):
+        """One line has words, the other doesn't — they still concatenate."""
+        w1 = _wt(" Hello", 1.0, 1.3)
+        lines = [
+            LRCLine(1.0, "Hello", words=[w1]),
+            LRCLine(2.0, "World", words=[]),
+        ]
+        result, _ = _op_merge(lines, 0)
+        assert result[0].words == [w1]
+
+    def test_merge_end_comes_from_second_line(self):
+        """Merged line's end must be taken from the second (later) line."""
+        lines = [LRCLine(1.0, "Hello", end=None), LRCLine(2.0, "World", end=3.5)]
+        result, _ = _op_merge(lines, 0)
+        assert result[0].end == pytest.approx(3.5)
+
+    def test_merge_end_is_none_when_second_line_has_no_end(self):
+        """If the second line has no end, merged line's end is also None."""
+        lines = [LRCLine(1.0, "Hello", end=2.0), LRCLine(2.0, "World", end=None)]
+        result, _ = _op_merge(lines, 0)
+        assert result[0].end is None
+
 
 # ---------------------------------------------------------------------------
 # Undo sequence — requires a mounted widget; use Textual Pilot via asyncio.run
@@ -266,5 +308,63 @@ class TestUndo:
                 ed._apply_undo()  # restores to 2 lines
                 ed._apply_undo()  # second call: snapshot is None, should be a no-op
                 assert len(ed._lines) == 2  # still restored; nothing happened
+
+        _run(_impl())
+
+    def test_undo_preserves_word_timing(self):
+        """Words attached to lines must survive the snapshot/restore cycle."""
+
+        async def _impl():
+            async with _EditorApp().run_test(headless=True) as pilot:
+                ed = pilot.app.query_one(LyricsEditor)
+                w = _wt(" Hello", 1.0, 1.3)
+                ed._lines = [LRCLine(1.0, "Hello", words=[w])]
+                ed._mode = "lrc"
+                ed._save_undo()
+                # Mutate the line so we can confirm undo reverts it
+                ed._lines[0].words = []
+                assert ed._lines[0].words == []
+                ed._apply_undo()
+                assert len(ed._lines[0].words) == 1
+                assert ed._lines[0].words[0].word == " Hello"
+
+        _run(_impl())
+
+    def test_undo_words_snapshot_immune_to_live_mutation(self):
+        """Replacing the live line's words list must not corrupt the snapshot.
+
+        This is the critical direction for undo correctness: edits made after
+        _save_undo must not bleed back into the snapshot.
+        """
+
+        async def _impl():
+            async with _EditorApp().run_test(headless=True) as pilot:
+                ed = pilot.app.query_one(LyricsEditor)
+                w = _wt(" Hi", 0.5, 0.8)
+                ed._lines = [LRCLine(0.5, "Hi", words=[w])]
+                ed._mode = "lrc"
+                ed._save_undo()
+                # Replace the live line's words list (as a real operation would).
+                ed._lines[0].words = []
+                assert ed._undo_lines is not None
+                # Snapshot must still hold the original word.
+                assert len(ed._undo_lines[0].words) == 1
+                assert ed._undo_lines[0].words[0].word == " Hi"
+
+        _run(_impl())
+
+    def test_undo_snapshot_list_is_independent_from_live_list(self):
+        """Appending to the snapshot's list must not affect the live lines."""
+
+        async def _impl():
+            async with _EditorApp().run_test(headless=True) as pilot:
+                ed = pilot.app.query_one(LyricsEditor)
+                w = _wt(" Hi", 0.5, 0.8)
+                ed._lines = [LRCLine(0.5, "Hi", words=[w])]
+                ed._mode = "lrc"
+                ed._save_undo()
+                assert ed._undo_lines is not None
+                ed._undo_lines[0].words.append(_wt(" extra", 9.0, 9.1))
+                assert len(ed._lines[0].words) == 1  # live lines unchanged
 
         _run(_impl())

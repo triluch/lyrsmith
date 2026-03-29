@@ -14,7 +14,7 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView, TextArea
 
-from ..lrc import LRCLine, active_line_index, parse, serialize
+from ..lrc import LRCLine, active_line_index, parse, serialize, word_ts_for_split
 from ._fast_list_view import FastListView
 from .edit_line_modal import EditLineModal, EditLineResult
 from ..keybinds import (
@@ -100,7 +100,12 @@ def _op_merge(lines: list[LRCLine], idx: int) -> tuple[list[LRCLine], int]:
     if not (0 <= idx < len(lines) - 1):
         return lines, idx
     merged = _join_lines(lines[idx].text, lines[idx + 1].text)
-    lines[idx] = LRCLine(lines[idx].timestamp, merged, end=lines[idx + 1].end)
+    lines[idx] = LRCLine(
+        lines[idx].timestamp,
+        merged,
+        end=lines[idx + 1].end,
+        words=lines[idx].words + lines[idx + 1].words,
+    )
     lines.pop(idx + 1)
     return lines, idx
 
@@ -280,6 +285,11 @@ class LyricsEditor(Widget):
         return self._mode
 
     @property
+    def lrc_lines(self) -> list[LRCLine]:
+        """Current LRC lines. Empty list when not in LRC mode."""
+        return self._lines if self._mode == "lrc" else []
+
+    @property
     def is_dirty(self) -> bool:
         return self._is_dirty
 
@@ -359,8 +369,13 @@ class LyricsEditor(Widget):
 
     def _save_undo(self) -> None:
         """Snapshot current lines + cursor for single-level undo."""
+        # list(l.words) is a shallow copy: WordTiming contains only immutable
+        # primitive fields (str, float) and is never mutated in place — only
+        # the list itself is ever replaced.  Shared WordTiming references are
+        # therefore safe and a deep copy would be wasteful.
         self._undo_lines = [
-            LRCLine(l.timestamp, l.text, end=l.end) for l in self._lines
+            LRCLine(l.timestamp, l.text, end=l.end, words=list(l.words))
+            for l in self._lines
         ]
         self._undo_cursor = self._cursor_idx
 
@@ -517,20 +532,51 @@ class LyricsEditor(Widget):
                     return  # nothing changed — leave undo buffer intact
                 self._save_undo()
                 self._lines[idx].text = result.text
+                # Word alignment is no longer valid once text has been manually
+                # edited; clear so a subsequent split falls back to the heuristic
+                # rather than matching against stale word data.
+                # (end timestamp is kept — it's the segment boundary, unaffected
+                # by word-level edits.)
+                self._lines[idx].words = []
                 self._mark_dirty()
                 self._refresh_list()
                 self._set_cursor(idx)
 
             elif result.action == "split":
                 self._save_undo()
-                # The original segment's end belongs to the second half; the
-                # first half no longer has a known end after the cut.
+                # The original segment's end timestamp belongs to the second half.
+                # The first half's end is derived from its last word when word
+                # data is available; otherwise it is cleared.
                 original_end = self._lines[idx].end
+                original_words = self._lines[idx].words
+
+                # Try to derive a word-precise timestamp for the second half.
+                # word_ts_for_split matches the first token of result.second
+                # against the retained WordTiming list and returns the word's
+                # start time (more accurate than any playback-position heuristic).
+                ts_from_words, split_word_idx = word_ts_for_split(
+                    original_words, result.second
+                )
+                has_word_ts = ts_from_words is not None
+
+                # Distribute word timing: first half keeps words before the split
+                # word; second half keeps words from the split word onwards.
+                # When no word match was found, clear both halves — the data
+                # can no longer be reliably attributed to either part.
+                first_half_words = (
+                    original_words[:split_word_idx] if has_word_ts else []
+                )
+                second_words = original_words[split_word_idx:] if has_word_ts else []
+
                 self._lines[idx].text = result.text
-                self._lines[idx].end = None
-                # Second half timestamp: use current playback position when it
-                # falls after the current line; otherwise use the midpoint to the
-                # next line (avoids hardcoded offset colliding with neighbour).
+                self._lines[idx].words = first_half_words
+                # End time: last word's end when word data is available, else None.
+                self._lines[idx].end = (
+                    first_half_words[-1].end if first_half_words else None
+                )
+
+                # Timestamp for second half: word-precise if available, otherwise
+                # fall back to current playback position or midpoint heuristic.
                 first_ts = self._lines[idx].timestamp
                 next_ts = (
                     self._lines[idx + 1].timestamp
@@ -538,12 +584,19 @@ class LyricsEditor(Widget):
                     else first_ts + 2.0
                 )
                 new_ts = (
-                    self._current_position
-                    if self._current_position > first_ts
-                    else (first_ts + next_ts) / 2
+                    ts_from_words
+                    if has_word_ts
+                    else (
+                        self._current_position
+                        if self._current_position > first_ts
+                        else (first_ts + next_ts) / 2
+                    )
                 )
                 self._lines.insert(
-                    idx + 1, LRCLine(new_ts, result.second, end=original_end)
+                    idx + 1,
+                    LRCLine(
+                        new_ts, result.second, end=original_end, words=second_words
+                    ),
                 )
                 self._mark_dirty()
                 self._refresh_list()

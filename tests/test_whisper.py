@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from lyrsmith.lrc import WordTiming
 from lyrsmith.transcribe.whisper import AVAILABLE_MODELS, Transcriber
 
 _PATCH = "lyrsmith.transcribe.whisper.WhisperModel"
@@ -95,15 +96,22 @@ class TestTranscribe:
         seg1, seg2 = MagicMock(), MagicMock()
         seg1.start, seg1.end, seg1.text = 1.5, 2.8, "  Hello world  "
         seg2.start, seg2.end, seg2.text = 3.0, 4.1, "Goodbye"
+        # Explicitly set words=[] so the test is unambiguous about which code
+        # path is exercised (words=MagicMock() is truthy but iterates as empty,
+        # which relies on an implementation detail of unittest.mock).
+        seg1.words = []
+        seg2.words = []
         mock_model.transcribe.return_value = ([seg1, seg2], MagicMock())
         result = t.transcribe(Path("test.mp3"))
         assert len(result) == 2
-        assert result[0].timestamp == pytest.approx(1.5)
+        assert result[0].timestamp == pytest.approx(1.5)  # fallback: seg.start
         assert result[0].end == pytest.approx(2.8)
         assert result[0].text == "Hello world"  # stripped
+        assert result[0].words == []
         assert result[1].timestamp == pytest.approx(3.0)
         assert result[1].end == pytest.approx(4.1)
         assert result[1].text == "Goodbye"
+        assert result[1].words == []
 
     def test_progress_callback_called_during_transcribe(self):
         t, mock_model = self._transcriber_with_mock_model()
@@ -120,6 +128,61 @@ class TestTranscribe:
         t.transcribe(p)
         args, _ = mock_model.transcribe.call_args
         assert args[0] == str(p)
+
+    def test_word_timestamps_flag_passed(self):
+        """word_timestamps=True must always be forwarded to the model."""
+        t, mock_model = self._transcriber_with_mock_model()
+        mock_model.transcribe.return_value = ([], MagicMock())
+        t.transcribe(Path("test.mp3"))
+        _, kwargs = mock_model.transcribe.call_args
+        assert kwargs.get("word_timestamps") is True
+
+    def _make_seg(self, start, end, text, words):
+        """Build a mock segment with a proper iterable words list."""
+        seg = MagicMock()
+        seg.start = start
+        seg.end = end
+        seg.text = text
+        seg.words = words
+        return seg
+
+    def _make_word(self, word, start, end):
+        w = MagicMock()
+        w.word = word
+        w.start = start
+        w.end = end
+        return w
+
+    def test_words_populated_from_segment(self):
+        t, mock_model = self._transcriber_with_mock_model()
+        w1 = self._make_word(" Hello", 1.0, 1.3)
+        w2 = self._make_word(" world", 1.4, 1.8)
+        seg = self._make_seg(0.8, 2.0, " Hello world ", [w1, w2])
+        mock_model.transcribe.return_value = ([seg], MagicMock())
+        result = t.transcribe(Path("test.mp3"))
+        assert len(result[0].words) == 2
+        assert isinstance(result[0].words[0], WordTiming)
+        assert result[0].words[0].word == " Hello"
+        assert result[0].words[0].start == pytest.approx(1.0)
+        assert result[0].words[1].word == " world"
+        assert result[0].words[1].start == pytest.approx(1.4)
+
+    def test_timestamp_uses_first_word_start(self):
+        """Segment timestamp should come from words[0].start, not seg.start."""
+        t, mock_model = self._transcriber_with_mock_model()
+        w1 = self._make_word(" Hello", 1.2, 1.5)  # first word starts later than seg
+        seg = self._make_seg(0.5, 2.0, " Hello world ", [w1])
+        mock_model.transcribe.return_value = ([seg], MagicMock())
+        result = t.transcribe(Path("test.mp3"))
+        assert result[0].timestamp == pytest.approx(1.2)
+
+    def test_timestamp_falls_back_to_seg_start_when_no_words(self):
+        t, mock_model = self._transcriber_with_mock_model()
+        seg = self._make_seg(3.0, 4.5, " Silence ", [])
+        mock_model.transcribe.return_value = ([seg], MagicMock())
+        result = t.transcribe(Path("test.mp3"))
+        assert result[0].timestamp == pytest.approx(3.0)
+        assert result[0].words == []
 
 
 class TestAvailableModels:

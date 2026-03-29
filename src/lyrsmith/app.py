@@ -24,7 +24,14 @@ from .keybinds import (
     KB_TRANSCRIBE,
 )
 
-from .metadata.tags import read_info, read_lyrics, write_lyrics
+from .lrc import attach_word_data, is_lrc, parse as parse_lrc
+from .metadata.tags import (
+    read_info,
+    read_lyrics,
+    read_word_data,
+    write_lyrics,
+    write_word_data,
+)
 from .transcribe.whisper import AVAILABLE_MODELS, transcriber
 from .ui.bottom_bar import BottomBar
 from .ui.file_browser import FileBrowser
@@ -194,11 +201,9 @@ class LyrsmithApp(App):
         lyrics_text = read_lyrics(path)
 
         # Determine lyrics type
-        from .lrc import is_lrc as _is_lrc
-
         lyrics_type: str | None = None
         if lyrics_text is not None:
-            lyrics_type = "lrc" if _is_lrc(lyrics_text) else "plain"
+            lyrics_type = "lrc" if is_lrc(lyrics_text) else "plain"
 
         # Update player
         self._player.load(path)
@@ -221,7 +226,11 @@ class LyrsmithApp(App):
 
         # Load lyrics into editor
         if lyrics_type == "lrc" and lyrics_text:
-            self._w_editor.load_lrc(lyrics_text)
+            meta, lrc_lines = parse_lrc(lyrics_text)
+            word_data = read_word_data(path)
+            if word_data:
+                attach_word_data(lrc_lines, word_data)
+            self._w_editor.load_lines(meta, lrc_lines)
         else:
             # Plain text for existing plain lyrics or empty string for no lyrics —
             # always gives an editable area, never a dead hint screen.
@@ -293,10 +302,12 @@ class LyrsmithApp(App):
         if lyrics_text is None:
             self._w_editor.load_empty()
         else:
-            from .lrc import is_lrc as _is_lrc
-
-            if _is_lrc(lyrics_text):
-                self._w_editor.load_lrc(lyrics_text)
+            if is_lrc(lyrics_text):
+                meta, lrc_lines = parse_lrc(lyrics_text)
+                word_data = read_word_data(self._loaded_path)
+                if word_data:
+                    attach_word_data(lrc_lines, word_data)
+                self._w_editor.load_lines(meta, lrc_lines)
             else:
                 self._w_editor.load_plain(lyrics_text)
         self._w_top.set_status("Reloaded from file")
@@ -373,6 +384,9 @@ class LyrsmithApp(App):
             return False
         try:
             write_lyrics(self._loaded_path, text)
+            # Persist word timing data alongside lyrics.  write_word_data is
+            # best-effort: errors are swallowed internally and never prevent save.
+            write_word_data(self._loaded_path, self._w_editor.lrc_lines)
             self._w_top.set_status("Saved")
             # Clear dirty flag without reloading — avoids resetting editor
             # position and losing the active lyric highlight during playback.

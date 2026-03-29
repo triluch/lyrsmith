@@ -28,8 +28,9 @@ from textual.widgets import Label
 import lyrsmith.config as config_module
 from lyrsmith.app import LyrsmithApp
 from lyrsmith.config import Config
-from lyrsmith.lrc import LRCLine
+from lyrsmith.lrc import LRCLine, WordTiming
 from lyrsmith.metadata.cache import FileInfo
+from lyrsmith.metadata.tags import read_word_data, write_word_data
 from lyrsmith.ui.bottom_bar import BottomBar
 from lyrsmith.ui.config_modal import ConfigModal
 from lyrsmith.ui.edit_line_modal import EditLineModal
@@ -702,6 +703,143 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
+    def test_split_with_words_updates_first_half_end(self, make_app):
+        """After a word-matched split, first half end = last first-half word end."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                # Give line 0 word timing: "Hello" ends at 1.4, "World" ends at 2.0
+                w_hello = WordTiming(word=" Hello", start=1.0, end=1.4)
+                w_world = WordTiming(word=" World", start=1.6, end=2.0)
+                ed._lines[0].words = [w_hello, w_world]
+                ed._lines[0].end = 2.0  # original segment end
+
+                ed._set_cursor(0)
+                await pilot.pause()
+                await pilot.press("e")
+                await pilot.pause()
+                assert isinstance(pilot.app.screen, EditLineModal)
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("Hello World")
+                await pilot.pause()
+                ta.move_cursor((0, 5))  # cursor after "Hello"
+                await pilot.pause()
+                await pilot.press("ctrl+k")
+                await pilot.pause()
+
+                # First half: "Hello" — end must be updated to w_hello.end
+                assert ed._lines[0].end == pytest.approx(1.4)
+                assert ed._lines[0].words == [w_hello]
+                # Second half: "World" — keeps original segment end; ts from word
+                assert ed._lines[1].end == pytest.approx(2.0)
+                assert ed._lines[1].timestamp == pytest.approx(1.6)
+                assert ed._lines[1].words == [w_world]
+
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_edit_save_clears_word_data(self, make_app):
+        """Changing line text via the edit modal must invalidate word timing."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                ed._lines[0].words = [
+                    WordTiming(" Hello", 1.0, 1.4),
+                    WordTiming(" World", 1.6, 2.0),
+                ]
+                ed._set_cursor(0)
+                await pilot.pause()
+                await pilot.press("e")
+                await pilot.pause()
+                assert isinstance(pilot.app.screen, EditLineModal)
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                # Modify the text — word alignment is now stale
+                ta.load_text("Hello beautiful world")
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                assert not isinstance(pilot.app.screen, EditLineModal)
+                assert ed._lines[0].text == "Hello beautiful world"
+                assert ed._lines[0].words == []
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_edit_noop_preserves_word_data(self, make_app):
+        """Saving without changing text must leave word timing untouched."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                words = [
+                    WordTiming(" First", 1.0, 1.3),
+                    WordTiming(" line", 1.4, 1.7),
+                ]
+                ed._lines[0].words = words
+                ed._set_cursor(0)
+                await pilot.pause()
+                await pilot.press("e")
+                await pilot.pause()
+                assert isinstance(pilot.app.screen, EditLineModal)
+                # Press Enter immediately — text unchanged, early return expected
+                await pilot.press("enter")
+                await pilot.pause()
+                assert not isinstance(pilot.app.screen, EditLineModal)
+                # Words must be intact: no undo was saved, nothing was cleared
+                assert ed._lines[0].words == words
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_split_after_edit_uses_heuristic_timestamp(self, make_app):
+        """After text is edited (words cleared), split falls back to playback position."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                # words=[] simulates the state after a manual text edit
+                ed._lines[0].words = []
+                ed._lines[0].timestamp = 1.0
+                # Playback position is past line 0 — heuristic should pick it up
+                ed._current_position = 3.5
+                ed._set_cursor(0)
+                await pilot.pause()
+                await pilot.press("e")
+                await pilot.pause()
+                assert isinstance(pilot.app.screen, EditLineModal)
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("Hello World")
+                await pilot.pause()
+                ta.move_cursor((0, 5))
+                await pilot.pause()
+                await pilot.press("ctrl+k")
+                await pilot.pause()
+                # New line timestamp must come from current_position (3.5),
+                # NOT from any word start (there are none).
+                assert ed._lines[1].timestamp == pytest.approx(3.5)
+                assert ed._lines[1].words == []
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestUndoChain
@@ -975,6 +1113,183 @@ class TestSaveFlow:
                 assert any(c[0] == audio1 for c in saved_calls)
                 # And the new file is now loaded
                 assert app._loaded_path == audio2
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_ctrl_s_also_calls_write_word_data(self, make_app, monkeypatch, tmp_path):
+        """ctrl+s must invoke write_word_data after write_lyrics."""
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "track.mp3")
+        word_write_calls: list = []
+        monkeypatch.setattr("lyrsmith.app.write_lyrics", lambda *_: None)
+        monkeypatch.setattr(
+            "lyrsmith.app.write_word_data",
+            lambda path, lines: word_write_calls.append((path, lines)),
+        )
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._loaded_path = audio
+                ed = app.query_one(LyricsEditor)
+                ed.load_lrc(_SAMPLE_LRC)
+                ed._lines[0].words = [WordTiming(" First", 1.0, 1.3)]
+                ed.mark_dirty()
+                await pilot.pause()
+                await pilot.press("ctrl+s")
+                await pilot.pause()
+                assert len(word_write_calls) == 1
+                assert word_write_calls[0][0] == audio
+                # Lines passed to write_word_data must include the word data
+                assert any(l.words for l in word_write_calls[0][1])
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_save_plain_mode_removes_word_data_tag(
+        self, make_app, monkeypatch, tmp_path
+    ):
+        """Saving in plain-text mode must delete the LYRSMITH_WORDS tag from the file."""
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "track.mp3")
+        # Pre-populate word data so there is something to delete
+        write_word_data(
+            audio, [LRCLine(1.0, "Hello", words=[WordTiming(" Hello", 1.0, 1.3)])]
+        )
+        assert read_word_data(audio) != {}
+
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        # Return plain (non-LRC) text → editor enters plain mode
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: "Just plain lyrics")
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._do_load(audio)
+                await pilot.pause()
+                ed = app.query_one(LyricsEditor)
+                assert ed.mode == "plain"
+                ed.mark_dirty()
+                await pilot.press("ctrl+s")
+                await pilot.pause()
+                assert read_word_data(audio) == {}
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+
+# ---------------------------------------------------------------------------
+# TestWordDataPersistence
+# ---------------------------------------------------------------------------
+
+
+class TestWordDataPersistence:
+    """Load→save→reload round-trips for word timing data."""
+
+    def _prep_file(self, tmp_path, monkeypatch, *, word_lines):
+        """Write word data to a fresh mp3 and mock read_info."""
+        audio = _make_mp3(tmp_path / "track.mp3")
+        write_word_data(audio, word_lines)
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        return audio
+
+    def test_word_data_attached_on_load(self, make_app, monkeypatch, tmp_path):
+        """Words and end timestamps written to the tag must be attached to lines on load."""
+        _factory, _ = make_app
+        w = WordTiming(" First", 1.0, 1.3)
+        audio = self._prep_file(
+            tmp_path,
+            monkeypatch,
+            word_lines=[LRCLine(1.0, "First line", end=3.0, words=[w])],
+        )
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._do_load(audio)
+                await pilot.pause()
+                ed = app.query_one(LyricsEditor)
+                assert ed.mode == "lrc"
+                line_1 = next(l for l in ed._lines if abs(l.timestamp - 1.0) < 0.01)
+                assert len(line_1.words) == 1
+                assert line_1.words[0].word == " First"
+                assert line_1.end == pytest.approx(3.0)
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_word_data_survives_save_then_reload(self, make_app, monkeypatch, tmp_path):
+        """Word data must round-trip through ctrl+s → action_discard_reload."""
+        _factory, _ = make_app
+        w = WordTiming(" First", 1.0, 1.3)
+        audio = self._prep_file(
+            tmp_path,
+            monkeypatch,
+            word_lines=[LRCLine(1.0, "First line", end=3.0, words=[w])],
+        )
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._do_load(audio)
+                await pilot.pause()
+                ed = app.query_one(LyricsEditor)
+                assert ed._lines[0].words  # sanity: attached on load
+
+                ed.mark_dirty()
+                await pilot.press("ctrl+s")  # writes word data to tag
+                await pilot.pause()
+
+                app.action_discard_reload()  # reads word data from tag
+                await pilot.pause()
+
+                line_1 = next(l for l in ed._lines if abs(l.timestamp - 1.0) < 0.01)
+                assert line_1.words[0].word == " First"
+                assert line_1.end == pytest.approx(3.0)
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_discard_reload_reattaches_word_data(self, make_app, monkeypatch, tmp_path):
+        """action_discard_reload must re-read word data even after in-memory edits cleared it."""
+        _factory, _ = make_app
+        w = WordTiming(" Second", 3.0, 3.4)
+        audio = self._prep_file(
+            tmp_path,
+            monkeypatch,
+            word_lines=[LRCLine(3.0, "Second line", end=5.0, words=[w])],
+        )
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._do_load(audio)
+                await pilot.pause()
+                ed = app.query_one(LyricsEditor)
+
+                line_3 = next(l for l in ed._lines if abs(l.timestamp - 3.0) < 0.01)
+                assert line_3.words[0].word == " Second"  # sanity
+
+                # Simulate in-memory edits clearing word data
+                for l in ed._lines:
+                    l.words = []
+                    l.end = None
+
+                app.action_discard_reload()
+                await pilot.pause()
+
+                line_3_after = next(
+                    l for l in ed._lines if abs(l.timestamp - 3.0) < 0.01
+                )
+                assert line_3_after.words[0].word == " Second"
+                assert line_3_after.end == pytest.approx(5.0)
                 await pilot.press("ctrl+q")
 
         asyncio.run(_impl())

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 _TIMESTAMP_RE = re.compile(r"\[(\d{1,2}):(\d{2})\.(\d{2,3})\]")
 _META_RE = re.compile(r"^\[(\w+):(.*?)\]\s*$")
+_NONWORD_RE = re.compile(r"[^\w]+")
 
 
 def _fmt_ts(seconds: float) -> str:
@@ -20,10 +21,39 @@ def _fmt_ts(seconds: float) -> str:
 
 
 @dataclass
+class WordTiming:
+    """Single word with its start/end times from Whisper word-level alignment.
+
+    ``word`` is the raw string returned by faster-whisper and may contain
+    leading whitespace or punctuation.  Consumers that need plain text should
+    strip/normalise it themselves.
+    """
+
+    word: str  # raw word text (may include leading space / punctuation)
+    start: float  # seconds
+    end: float  # seconds
+
+
+@dataclass
+class LineEnrichment:
+    """Persisted per-line enrichment data loaded from the ``LYRSMITH_WORDS`` tag.
+
+    Both fields are optional so the tag can store any subset of enrichment:
+    a line may have only an end timestamp, only word timing, or both.
+    """
+
+    end: float | None = None
+    words: list[WordTiming] = field(default_factory=list)
+
+
+@dataclass
 class LRCLine:
     timestamp: float  # seconds (segment start)
     text: str
     end: float | None = None  # optional segment end time (populated by transcriber)
+    words: list[WordTiming] = field(
+        default_factory=list
+    )  # word-level timing (in-memory only)
 
     def timestamp_str(self) -> str:
         return _fmt_ts(self.timestamp)
@@ -102,3 +132,56 @@ def active_line_index(lines: list[LRCLine], position: float) -> int:
         if line.timestamp <= position:
             result = i
     return result
+
+
+def attach_word_data(
+    lines: list[LRCLine], enrichment: dict[str, LineEnrichment]
+) -> None:
+    """Attach persisted enrichment data to matching lines.
+
+    *enrichment* is keyed by timestamp formatted to 3 decimal places
+    (``f"{ts:.3f}"``), which is the format produced by
+    ``metadata.tags.decode_word_data``.  Lines whose timestamp has no
+    matching entry are left unchanged; partial coverage is fine.
+
+    Sets both ``line.words`` and ``line.end`` (when the enrichment entry
+    carries an end timestamp).
+    """
+    for line in lines:
+        key = f"{line.timestamp:.3f}"
+        if key in enrichment:
+            e = enrichment[key]
+            line.words = e.words
+            if e.end is not None:
+                line.end = e.end
+
+
+def word_ts_for_split(
+    words: list[WordTiming], second_half: str
+) -> tuple[float | None, int]:
+    """Find the start time and list index of the word that begins *second_half*.
+
+    The first token of *second_half* (stripped of non-word characters,
+    lowercased) is compared against each ``WordTiming.word`` in order.  The
+    first match wins.
+
+    Returns ``(start_seconds, word_index)`` on success, ``(None, 0)`` when
+    *words* is empty, *second_half* is blank, or no word matches.
+
+    Callers should fall back to their existing heuristic timestamp when
+    ``start_seconds is None``.  The returned ``word_index`` can be used as
+    the boundary to split a words list into first-half and second-half
+    portions — it is only meaningful when ``start_seconds is not None``.
+    """
+    if not words:
+        return None, 0
+    tokens = second_half.split()
+    if not tokens:
+        return None, 0
+    target = _NONWORD_RE.sub("", tokens[0]).lower()
+    if not target:
+        return None, 0
+    for i, w in enumerate(words):
+        if _NONWORD_RE.sub("", w.word).lower() == target:
+            return w.start, i
+    return None, 0

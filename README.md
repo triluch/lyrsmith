@@ -71,8 +71,6 @@ lyrsmith [DIRECTORY]
 
 If no directory is given, the last-used directory is restored (or the current working directory on first run).
 
-Due to how Whisper works, the first transcribed line always gets timestamp 0:00 regardless of when vocals start. Stamp it manually.
-
 ---
 
 And yeah, of course it is slopped out, what did you expect in current times?

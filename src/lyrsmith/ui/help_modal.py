@@ -80,8 +80,8 @@ _LEFT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
             (KB_UP, "Move selection up"),
             (KB_DOWN, "Move selection down"),
             (KB_SELECT, "Load selected file"),
-            (KB_BACK, "Go up one directory (or trim filter)"),
-            ("a-z", "Filter list by name, Esc to clear"),
+            (KB_BACK, "Go up / trim filter"),
+            ("a-z", "Filter list"),
         ],
     ),
     (
