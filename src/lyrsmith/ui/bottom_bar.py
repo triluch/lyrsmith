@@ -73,6 +73,8 @@ _DISPLAY: dict[str, str] = {
     "f6": "F6",
     "f7": "F7",
     "f8": "F8",
+    # Pseudo-key used as a display hint in the help screen only
+    "a-z": "a-z / 0-9",
 }
 
 

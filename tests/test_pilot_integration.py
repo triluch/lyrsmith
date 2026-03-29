@@ -23,6 +23,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from textual.widgets import Label
+
 import lyrsmith.config as config_module
 from lyrsmith.app import LyrsmithApp
 from lyrsmith.config import Config
@@ -260,6 +262,28 @@ class TestFileBrowser:
         monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
         return audio
 
+    def _setup_multi(self, tmp_path: Path, monkeypatch) -> list[Path]:
+        """Create three distinctly-named files for filter tests."""
+        files = [
+            _make_mp3(tmp_path / "rock.mp3"),
+            _make_mp3(tmp_path / "jazz.mp3"),
+            _make_mp3(tmp_path / "rock_ballad.mp3"),
+        ]
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
+        return files
+
+    @staticmethod
+    def _visible_names(fb: FileBrowser, lv) -> list[str]:
+        """Return names of visible non-'..' list items."""
+        from textual.widgets import ListItem
+
+        return [
+            entry.name
+            for item, entry in zip(lv.children, fb._entries)
+            if isinstance(item, ListItem) and item.display and entry is not None
+        ]
+
     def test_enter_on_file_loads_it(self, make_app, monkeypatch):
         _factory, tmp_path = make_app
         audio = self._setup_dir(tmp_path, monkeypatch)
@@ -337,6 +361,163 @@ class TestFileBrowser:
                     item for item in lv.children if item.has_class("is-loaded")
                 ]
                 assert len(loaded_items) == 1
+
+        asyncio.run(_impl())
+
+    # ------------------------------------------------------------------
+    # Filtering tests
+    # ------------------------------------------------------------------
+
+    def test_typing_filters_list_to_matching_files(self, make_app, monkeypatch):
+        """Pressing printable keys narrows the visible file list by substring."""
+        _factory, tmp_path = make_app
+        self._setup_multi(tmp_path, monkeypatch)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                lv = pilot.app.query_one("#browser-list")
+                # All three files visible before typing
+                assert len(self._visible_names(fb, lv)) == 3
+                # "j" only appears in jazz.mp3
+                await pilot.press("j")
+                await pilot.pause()
+                visible = self._visible_names(fb, lv)
+                assert visible == ["jazz.mp3"]
+
+        asyncio.run(_impl())
+
+    def test_filter_label_active_while_query_set(self, make_app, monkeypatch):
+        _factory, tmp_path = make_app
+        self._setup_multi(tmp_path, monkeypatch)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                await pilot.press("j")
+                await pilot.pause()
+                assert fb._filter == "j"
+                fl = pilot.app.query_one("#filter-label", Label)
+                assert fl.has_class("active")
+
+        asyncio.run(_impl())
+
+    def test_escape_clears_filter_and_restores_all_items(self, make_app, monkeypatch):
+        _factory, tmp_path = make_app
+        self._setup_multi(tmp_path, monkeypatch)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                lv = pilot.app.query_one("#browser-list")
+                await pilot.press(
+                    "x"
+                )  # no match — all hidden (x absent in rock/jazz/rock_ballad)
+                await pilot.pause()
+                assert len(self._visible_names(fb, lv)) == 0
+                await pilot.press("escape")
+                await pilot.pause()
+                assert len(self._visible_names(fb, lv)) == 3
+                fl = pilot.app.query_one("#filter-label", Label)
+                assert not fl.has_class("active")
+
+        asyncio.run(_impl())
+
+    def test_backspace_trims_filter_one_char(self, make_app, monkeypatch):
+        _factory, tmp_path = make_app
+        self._setup_multi(tmp_path, monkeypatch)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                lv = pilot.app.query_one("#browser-list")
+                # "jaz" → only jazz.mp3; backspace → "ja" → still only jazz.mp3
+                await pilot.press("j")
+                await pilot.pause()
+                await pilot.press("a")
+                await pilot.pause()
+                await pilot.press("z")
+                await pilot.pause()
+                assert self._visible_names(fb, lv) == ["jazz.mp3"]
+                await pilot.press("backspace")
+                await pilot.pause()
+                assert fb._filter == "ja"
+                assert self._visible_names(fb, lv) == ["jazz.mp3"]
+
+        asyncio.run(_impl())
+
+    def test_backspace_with_empty_filter_navigates_up(self, make_app, monkeypatch):
+        """When no filter is active, backspace still navigates to parent dir."""
+        _factory, tmp_path = make_app
+        self._setup_dir(tmp_path, monkeypatch)
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+
+        async def _impl():
+            async with _factory(path=subdir).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                assert fb._filter == ""
+                assert fb.current_path == subdir.resolve()
+                await pilot.press("backspace")
+                await pilot.pause()
+                assert fb.current_path == tmp_path.resolve()
+
+        asyncio.run(_impl())
+
+    def test_loaded_file_stays_visible_when_filtered_out(self, make_app, monkeypatch):
+        """The currently loaded file is always shown regardless of the filter."""
+        _factory, tmp_path = make_app
+        files = self._setup_multi(tmp_path, monkeypatch)
+        rock_file = files[0]  # rock.mp3
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                lv = pilot.app.query_one("#browser-list")
+                fb.set_loaded(rock_file)
+                await pilot.pause()
+                # "j" matches only jazz.mp3 — rock.mp3 would normally be hidden
+                await pilot.press("j")
+                await pilot.pause()
+                visible = self._visible_names(fb, lv)
+                assert "jazz.mp3" in visible
+                assert "rock.mp3" in visible  # pinned: currently loaded
+                assert "rock_ballad.mp3" not in visible
+
+        asyncio.run(_impl())
+
+    def test_filter_cleared_on_directory_change(self, make_app, monkeypatch):
+        _factory, tmp_path = make_app
+        self._setup_dir(tmp_path, monkeypatch)
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                lv = pilot.app.query_one("#browser-list")
+                # Activate filter
+                await pilot.press("s")
+                await pilot.pause()
+                assert fb._filter == "s"
+                # Navigate into subdir — filter must reset
+                idx = next(
+                    i for i, e in enumerate(fb._entries) if e is not None and e.is_dir()
+                )
+                lv.index = idx
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                assert fb._filter == ""
+                fl = pilot.app.query_one("#filter-label", Label)
+                assert not fl.has_class("active")
 
         asyncio.run(_impl())
 

@@ -53,6 +53,16 @@ class FileBrowser(Widget):
     FileBrowser ListItem.is-dotdot Label {
         color: $text-muted;
     }
+    FileBrowser #filter-label {
+        display: none;
+        height: 1;
+        padding: 0 1;
+        color: $accent;
+        background: $surface;
+    }
+    FileBrowser #filter-label.active {
+        display: block;
+    }
     """
 
     # ------------------------------------------------------------------
@@ -84,9 +94,11 @@ class FileBrowser(Widget):
         # None = ".." (go up)
         self._entries: list[Path | None] = []
         self._loaded: Path | None = None
+        self._filter: str = ""
 
     def compose(self) -> ComposeResult:
         yield FastListView(id="browser-list")
+        yield Label("", id="filter-label")
 
     def on_mount(self) -> None:
         # Add class while ListView is still empty → update_node_styles walks 0 items.
@@ -95,6 +107,7 @@ class FileBrowser(Widget):
 
     def _populate(self, path: Path) -> None:
         self._path = path
+        self._filter = ""
         lv = self.query_one("#browser-list", ListView)
         lv.clear()
         self._entries = []
@@ -133,6 +146,7 @@ class FileBrowser(Widget):
             lv.mount(*all_items)
 
         self.post_message(self.DirChanged(path, list(files)))
+        self._apply_filter()
 
     def set_loaded(self, path: Path | None) -> None:
         """Mark which file is currently loaded. Updates styles in-place, preserving cursor."""
@@ -146,6 +160,35 @@ class FileBrowser(Widget):
                 item.add_class("is-loaded")
             elif entry == old_loaded:
                 item.remove_class("is-loaded")
+
+    # ------------------------------------------------------------------
+    # Filtering
+    # ------------------------------------------------------------------
+
+    def _apply_filter(self) -> None:
+        """Show/hide list items by substring match; update the filter label."""
+        lv = self.query_one("#browser-list", ListView)
+        q = self._filter.lower()
+        first_match: int | None = None
+        for i, (item, entry) in enumerate(zip(lv.children, self._entries)):
+            if not isinstance(item, ListItem):
+                continue
+            # ".." is always visible; loaded file stays visible regardless of filter
+            visible = (
+                entry is None
+                or not q
+                or q in entry.name.lower()
+                or entry == self._loaded
+            )
+            item.display = visible
+            if visible and first_match is None and entry is not None:
+                first_match = i
+        # Move cursor to first match when filter is active
+        if q and first_match is not None:
+            lv.index = first_match
+        fl = self.query_one("#filter-label", Label)
+        fl.update(f"/ {self._filter}" if self._filter else "")
+        fl.set_class(bool(self._filter), "active")
 
     # ------------------------------------------------------------------
     # Events
@@ -179,9 +222,27 @@ class FileBrowser(Widget):
             self.post_message(self.FileSelected(entry))
 
     def on_key(self, event) -> None:
+        # Printable characters build the filter string
+        if event.character and event.character.isprintable():
+            self._filter += event.character
+            self._apply_filter()
+            event.stop()
+            return
+
+        if event.key == "escape":
+            if self._filter:
+                self._filter = ""
+                self._apply_filter()
+                event.stop()
+            return
+
         if event.key == "backspace":
             event.stop()
-            if self._path.parent != self._path:
+            if self._filter:
+                # Eat one character from the filter
+                self._filter = self._filter[:-1]
+                self._apply_filter()
+            elif self._path.parent != self._path:
                 self._populate(self._path.parent)
 
         elif event.key in ("pagedown", "page_down"):
