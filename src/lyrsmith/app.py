@@ -444,6 +444,8 @@ class LyrsmithApp(App):
     # ------------------------------------------------------------------
 
     def _poll_focus(self) -> None:
+        if not self.is_running:
+            return
         focused = self.focused
         if focused is not self._last_focused:
             self._last_focused = focused
