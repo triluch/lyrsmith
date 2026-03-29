@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies
-        run: sudo apt-get install -y libmpv-dev
+        run: sudo apt-get update -qq && sudo apt-get install -y libmpv2
       - uses: astral-sh/setup-uv@v5
       - run: uv sync
       - run: uv run pytest -m "not slow" -q
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies
-        run: sudo apt-get install -y libmpv-dev
+        run: sudo apt-get update -qq && sudo apt-get install -y libmpv2
       - uses: astral-sh/setup-uv@v5
       - name: Cache Hugging Face models
         uses: actions/cache@v4
