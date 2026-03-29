@@ -22,6 +22,11 @@ class Config:
         default_factory=lambda: ["auto", "en", "pl", "de", "fr", "es", "ja", "zh"]
     )
     waveform_zoom: float = 20.0  # seconds visible in waveform pane
+    # Transcription acceleration
+    transcription_device: str = "cpu"  # cpu / cuda / hip
+    intra_threads: int = 0  # 0 = let ctranslate2 decide
+    inter_threads: int = 1
+    compute_type: str = "default"  # default / int8 / float16 / float32
     last_directory: str = ""
 
 

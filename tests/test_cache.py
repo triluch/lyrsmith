@@ -86,6 +86,30 @@ class TestMetadataCache:
             cache.put(_info(str(i)))
         assert len(cache._cache) <= 5
 
+    def test_concurrent_writes_do_not_corrupt(self):
+        """Multiple threads writing simultaneously must not raise or exceed maxsize."""
+        import threading
+
+        cache = MetadataCache(maxsize=20)
+        errors: list[Exception] = []
+
+        def writer(offset: int) -> None:
+            try:
+                for i in range(50):
+                    cache.put(_info(f"{offset}-{i}"))
+                    cache.get(Path(f"/music/{offset}-{i}.mp3"))
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=writer, args=(t,)) for t in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrent access raised: {errors}"
+        assert len(cache._cache) <= 20
+
 
 class TestFileInfoHelpers:
     def test_display_title_with_both(self):

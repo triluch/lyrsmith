@@ -1,11 +1,15 @@
-"""Top info bar: song title, whisper model/language, status."""
+"""Top info bar: song title, whisper model/language, status, F-key shortcuts."""
 
 from __future__ import annotations
 
 from textual.app import ComposeResult
+from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Label
+
+from ..keybinds import KB_CONFIG, KB_HELP
+from .bottom_bar import fmt_key
 
 
 class TopBar(Widget):
@@ -38,6 +42,18 @@ class TopBar(Widget):
         width: auto;
         color: $text-muted;
     }
+    TopBar #fn-keys {
+        width: auto;
+        height: 1;
+        background: $primary-darken-2;
+        border-left: tall $primary-darken-1;
+    }
+    TopBar #fn-keys Label {
+        height: 1;
+        content-align: left middle;
+        padding: 0 2;
+        color: $primary-lighten-2;
+    }
     """
 
     song_title: reactive[str] = reactive("No file loaded")
@@ -50,6 +66,9 @@ class TopBar(Widget):
         yield Label("", id="model-label")
         yield Label("", id="lang-label")
         yield Label("", id="status")
+        with Horizontal(id="fn-keys"):
+            yield Label(f"{fmt_key(KB_HELP)} Help", id="f1-label")
+            yield Label(f"{fmt_key(KB_CONFIG)} Config", id="f2-label")
 
     def watch_song_title(self, value: str) -> None:
         self.query_one("#song-title", Label).update(value)

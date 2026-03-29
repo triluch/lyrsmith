@@ -53,3 +53,4 @@ KB_NEXT_MODEL = "ctrl+n"  # cycle whisper model  (ctrl+m = CR = Enter in termina
 KB_NEXT_LANG = "ctrl+l"  # cycle whisper language
 KB_QUIT = "ctrl+q"
 KB_HELP = "f1"  # open keybind reference
+KB_CONFIG = "f2"  # open config editor

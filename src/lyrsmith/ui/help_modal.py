@@ -14,6 +14,7 @@ from ..keybinds import (
     KB_DISCARD_RELOAD,
     KB_DOWN,
     KB_EDIT_LINE,
+    KB_CONFIG,
     KB_HELP,
     KB_LINE_DOWN,
     KB_LINE_UP,
@@ -70,6 +71,7 @@ _LEFT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
             (KB_NEXT_PANE, "Focus next pane"),
             (KB_PREV_PANE, "Focus previous pane"),
             (KB_HELP, "This help screen"),
+            (KB_CONFIG, "Config editor"),
         ],
     ),
     (
@@ -213,13 +215,14 @@ class HelpModal(ModalScreen):
     BINDINGS = [
         Binding("escape", "dismiss", "Close", priority=True),
         Binding(KB_HELP, "dismiss", "", priority=True, show=False),
+        Binding(KB_CONFIG, "dismiss", "", priority=True, show=False),
     ]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="outer"):
             yield Label("Keybindings", id="title-bar")
             yield Label(
-                f"[#606060]Esc / {fmt_key(KB_HELP)} to close[/]",
+                f"[#606060]Esc / {fmt_key(KB_HELP)} / {fmt_key(KB_CONFIG)} to close[/]",
                 id="close-hint",
             )
             with Horizontal(id="columns"):
