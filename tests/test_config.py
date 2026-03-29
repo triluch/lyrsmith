@@ -1,7 +1,6 @@
 """Tests for config.py — load/save/defaults."""
 
 import pytest
-from pathlib import Path
 
 import lyrsmith.config as config_module
 from lyrsmith.config import Config, load, save
@@ -82,9 +81,7 @@ class TestSaveAndLoad:
 
 class TestLoadEdgeCases:
     def test_missing_file_returns_defaults(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            config_module, "_CONFIG_FILE", tmp_path / "nonexistent.yaml"
-        )
+        monkeypatch.setattr(config_module, "_CONFIG_FILE", tmp_path / "nonexistent.yaml")
         cfg = load()
         assert cfg.whisper_model == "base"
 

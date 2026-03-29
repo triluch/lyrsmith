@@ -12,7 +12,8 @@ from textual.widget import Widget
 
 from .audio.decoder import decode_to_pcm
 from .audio.player import Player
-from .config import Config, save as save_config
+from .config import Config
+from .config import save as save_config
 from .keybinds import (
     KB_CONFIG,
     KB_DISCARD_RELOAD,
@@ -23,8 +24,8 @@ from .keybinds import (
     KB_SAVE,
     KB_TRANSCRIBE,
 )
-
-from .lrc import attach_word_data, is_lrc, parse as parse_lrc
+from .lrc import attach_word_data, is_lrc
+from .lrc import parse as parse_lrc
 from .metadata.tags import (
     read_info,
     read_lyrics,
@@ -34,12 +35,12 @@ from .metadata.tags import (
 )
 from .transcribe.whisper import AVAILABLE_MODELS, transcriber
 from .ui.bottom_bar import BottomBar
+from .ui.config_modal import ConfigModal
 from .ui.file_browser import FileBrowser
+from .ui.help_modal import HelpModal
 from .ui.left_pane import LeftPane
 from .ui.lyrics_editor import LyricsEditor
 from .ui.top_bar import TopBar
-from .ui.config_modal import ConfigModal
-from .ui.help_modal import HelpModal
 from .ui.unsaved_modal import UnsavedModal
 from .ui.waveform_pane import WaveformPane
 
@@ -510,14 +511,10 @@ class LyrsmithApp(App):
     # Waveform seek → sync player
     # ------------------------------------------------------------------
 
-    def on_waveform_pane_seek_requested(
-        self, event: WaveformPane.SeekRequested
-    ) -> None:
+    def on_waveform_pane_seek_requested(self, event: WaveformPane.SeekRequested) -> None:
         self._w_editor.update_position(event.position)
 
-    def on_lyrics_editor_seek_requested(
-        self, event: LyricsEditor.SeekRequested
-    ) -> None:
+    def on_lyrics_editor_seek_requested(self, event: LyricsEditor.SeekRequested) -> None:
         self._player.seek(event.position)
         self._w_waveform.update_position(event.position)
 
@@ -541,9 +538,7 @@ class LyrsmithApp(App):
         self._config.waveform_zoom = event.zoom
         save_config(self._config)
 
-    def on_waveform_pane_volume_changed(
-        self, event: WaveformPane.VolumeChanged
-    ) -> None:
+    def on_waveform_pane_volume_changed(self, event: WaveformPane.VolumeChanged) -> None:
         self._config.volume = event.volume
         save_config(self._config)
 
@@ -551,7 +546,5 @@ class LyrsmithApp(App):
     # Transcribe from left pane key
     # ------------------------------------------------------------------
 
-    def on_left_pane_transcribe_requested(
-        self, _event: LeftPane.TranscribeRequested
-    ) -> None:
+    def on_left_pane_transcribe_requested(self, _event: LeftPane.TranscribeRequested) -> None:
         self.action_transcribe()

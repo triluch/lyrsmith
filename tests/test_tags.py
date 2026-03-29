@@ -6,16 +6,15 @@ via PyAV encoding a short silent WAV in memory.
 """
 
 import io
-import struct
 import wave as wave_mod
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
-from unittest.mock import MagicMock
-
+import lyrsmith.metadata.tags as _tags_mod
+from lyrsmith.lrc import LRCLine, WordTiming
 from lyrsmith.metadata.cache import cache
-from lyrsmith.lrc import LRCLine, LineEnrichment, WordTiming
 from lyrsmith.metadata.tags import (
     WORD_DATA_TAG,
     _read_id3_uslt,
@@ -30,8 +29,6 @@ from lyrsmith.metadata.tags import (
     write_lyrics,
     write_word_data,
 )
-import lyrsmith.metadata.tags as _tags_mod
-
 
 # ---------------------------------------------------------------------------
 # File creation helpers
@@ -327,9 +324,7 @@ class TestEncodeDecodeWordData:
         assert decoded["1.000"].words == []
 
     def test_single_line_words_roundtrip(self):
-        line = _line_with_words(
-            1.0, "Hello world", (" Hello", 1.0, 1.3), (" world", 1.4, 1.8)
-        )
+        line = _line_with_words(1.0, "Hello world", (" Hello", 1.0, 1.3), (" world", 1.4, 1.8))
         encoded = encode_word_data([line])
         assert encoded is not None
         decoded = decode_word_data(encoded)

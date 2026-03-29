@@ -198,9 +198,7 @@ class ConfigModal(ModalScreen[Config | None]):
         try:
             whisper_model = self._get("f-whisper-model") or self._cfg.whisper_model
             compute_type = self._get("f-compute-type") or "default"
-            whisper_language = (
-                self._get("f-whisper-language") or self._cfg.whisper_language
-            )
+            whisper_language = self._get("f-whisper-language") or self._cfg.whisper_language
 
             langs_raw = self._get("f-whisper-languages")
             whisper_languages = (

@@ -28,8 +28,19 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.0",
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",
+    "ruff>=0.15",
+]
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = [
+    "E741",   # ambiguous variable name — too noisy for lambda l: l.x patterns
 ]
 
 [tool.pytest.ini_options]

@@ -3,8 +3,8 @@
 import pytest
 
 from lyrsmith.lrc import (
-    LRCLine,
     LineEnrichment,
+    LRCLine,
     WordTiming,
     active_line_index,
     attach_word_data,
@@ -13,7 +13,6 @@ from lyrsmith.lrc import (
     serialize,
     word_ts_for_split,
 )
-
 
 # ---------------------------------------------------------------------------
 # WordTiming
@@ -374,9 +373,7 @@ class TestAttachWordData:
         line_a = LRCLine(1.0, "First")
         line_b = LRCLine(3.0, "Second")
         words_a = self._make_words((" First", 1.0, 1.4))
-        attach_word_data(
-            [line_a, line_b], {"1.000": self._enrich(end=2.0, words=words_a)}
-        )
+        attach_word_data([line_a, line_b], {"1.000": self._enrich(end=2.0, words=words_a)})
         assert line_a.words == words_a
         assert line_a.end == pytest.approx(2.0)
         assert line_b.words == []

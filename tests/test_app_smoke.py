@@ -67,9 +67,7 @@ def test_app_mounts_and_core_widgets_present(
     asyncio.run(_run())
 
 
-def test_help_modal_opens_and_closes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_help_modal_opens_and_closes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """F1 opens HelpModal; Escape closes it."""
     monkeypatch.setattr(config_module, "_CONFIG_DIR", tmp_path)
     monkeypatch.setattr(config_module, "_CONFIG_FILE", tmp_path / "config.yaml")

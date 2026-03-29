@@ -14,33 +14,33 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView, TextArea
 
-from ..lrc import LRCLine, active_line_index, parse, serialize, word_ts_for_split
-from ._fast_list_view import FastListView
-from .edit_line_modal import EditLineModal, EditLineResult
 from ..keybinds import (
-    NUDGE_FINE,
-    NUDGE_MED,
-    NUDGE_ROUGH,
-    SEEK_SMALL,
-    SEEK_LARGE,
     KB_DELETE_LINE,
     KB_EDIT_LINE,
     KB_MERGE_LINE,
-    KB_NUDGE_FINE_FWD,
     KB_NUDGE_FINE_BACK,
-    KB_NUDGE_MED_FWD,
+    KB_NUDGE_FINE_FWD,
     KB_NUDGE_MED_BACK,
-    KB_NUDGE_ROUGH_FWD,
+    KB_NUDGE_MED_FWD,
     KB_NUDGE_ROUGH_BACK,
+    KB_NUDGE_ROUGH_FWD,
     KB_PLAY_PAUSE,
-    KB_SEEK_TO_LINE,
-    KB_SEEK_FWD,
     KB_SEEK_BACK,
-    KB_SEEK_FWD_LARGE,
     KB_SEEK_BACK_LARGE,
+    KB_SEEK_FWD,
+    KB_SEEK_FWD_LARGE,
+    KB_SEEK_TO_LINE,
     KB_STAMP_LINE,
     KB_UNDO,
+    NUDGE_FINE,
+    NUDGE_MED,
+    NUDGE_ROUGH,
+    SEEK_LARGE,
+    SEEK_SMALL,
 )
+from ..lrc import LRCLine, active_line_index, parse, serialize, word_ts_for_split
+from ._fast_list_view import FastListView
+from .edit_line_modal import EditLineModal, EditLineResult
 
 # key name → nudge delta mapping (uses event.key, consistent with all other bindings).
 _KEY_NUDGE: dict[str, float] = {
@@ -60,9 +60,7 @@ _EMPTY_HINT = "Select a file and press Enter to load"
 # ---------------------------------------------------------------------------
 
 
-def _op_nudge(
-    lines: list[LRCLine], idx: int, delta: float
-) -> tuple[list[LRCLine], int]:
+def _op_nudge(lines: list[LRCLine], idx: int, delta: float) -> tuple[list[LRCLine], int]:
     """Nudge timestamp of line at idx by delta seconds.
 
     Mutates the list and LRCLine objects in place, re-sorts, and returns
@@ -374,8 +372,7 @@ class LyricsEditor(Widget):
         # the list itself is ever replaced.  Shared WordTiming references are
         # therefore safe and a deep copy would be wasteful.
         self._undo_lines = [
-            LRCLine(l.timestamp, l.text, end=l.end, words=list(l.words))
-            for l in self._lines
+            LRCLine(l.timestamp, l.text, end=l.end, words=list(l.words)) for l in self._lines
         ]
         self._undo_cursor = self._cursor_idx
 
@@ -426,27 +423,19 @@ class LyricsEditor(Widget):
             return
         elif key == KB_SEEK_FWD:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position + SEEK_SMALL))
-            )
+            self.post_message(self.SeekRequested(max(0.0, self._current_position + SEEK_SMALL)))
             return
         elif key == KB_SEEK_BACK:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position - SEEK_SMALL))
-            )
+            self.post_message(self.SeekRequested(max(0.0, self._current_position - SEEK_SMALL)))
             return
         elif key == KB_SEEK_FWD_LARGE:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position + SEEK_LARGE))
-            )
+            self.post_message(self.SeekRequested(max(0.0, self._current_position + SEEK_LARGE)))
             return
         elif key == KB_SEEK_BACK_LARGE:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position - SEEK_LARGE))
-            )
+            self.post_message(self.SeekRequested(max(0.0, self._current_position - SEEK_LARGE)))
             return
 
         if key == KB_SEEK_TO_LINE:
@@ -554,26 +543,20 @@ class LyricsEditor(Widget):
                 # word_ts_for_split matches the first token of result.second
                 # against the retained WordTiming list and returns the word's
                 # start time (more accurate than any playback-position heuristic).
-                ts_from_words, split_word_idx = word_ts_for_split(
-                    original_words, result.second
-                )
+                ts_from_words, split_word_idx = word_ts_for_split(original_words, result.second)
                 has_word_ts = ts_from_words is not None
 
                 # Distribute word timing: first half keeps words before the split
                 # word; second half keeps words from the split word onwards.
                 # When no word match was found, clear both halves — the data
                 # can no longer be reliably attributed to either part.
-                first_half_words = (
-                    original_words[:split_word_idx] if has_word_ts else []
-                )
+                first_half_words = original_words[:split_word_idx] if has_word_ts else []
                 second_words = original_words[split_word_idx:] if has_word_ts else []
 
                 self._lines[idx].text = result.text
                 self._lines[idx].words = first_half_words
                 # End time: last word's end when word data is available, else None.
-                self._lines[idx].end = (
-                    first_half_words[-1].end if first_half_words else None
-                )
+                self._lines[idx].end = first_half_words[-1].end if first_half_words else None
 
                 # Timestamp for second half: word-precise if available, otherwise
                 # fall back to current playback position or midpoint heuristic.
@@ -594,9 +577,7 @@ class LyricsEditor(Widget):
                 )
                 self._lines.insert(
                     idx + 1,
-                    LRCLine(
-                        new_ts, result.second, end=original_end, words=second_words
-                    ),
+                    LRCLine(new_ts, result.second, end=original_end, words=second_words),
                 )
                 self._mark_dirty()
                 self._refresh_list()

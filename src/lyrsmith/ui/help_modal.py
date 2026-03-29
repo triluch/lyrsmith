@@ -10,11 +10,11 @@ from textual.widgets import Label, Static
 
 from ..keybinds import (
     KB_BACK,
+    KB_CONFIG,
     KB_DELETE_LINE,
     KB_DISCARD_RELOAD,
     KB_DOWN,
     KB_EDIT_LINE,
-    KB_CONFIG,
     KB_HELP,
     KB_LINE_DOWN,
     KB_LINE_UP,

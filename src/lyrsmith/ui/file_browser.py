@@ -174,12 +174,7 @@ class FileBrowser(Widget):
             if not isinstance(item, ListItem):
                 continue
             # ".." is always visible; loaded file stays visible regardless of filter
-            visible = (
-                entry is None
-                or not q
-                or q in entry.name.lower()
-                or entry == self._loaded
-            )
+            visible = entry is None or not q or q in entry.name.lower() or entry == self._loaded
             item.display = visible
             if visible and first_match is None and entry is not None:
                 first_match = i

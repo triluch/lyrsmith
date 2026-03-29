@@ -15,9 +15,9 @@ import json
 from pathlib import Path
 
 from mutagen import File as MutagenFile
-from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, USLT
+from mutagen.id3 import ID3, TXXX, USLT, ID3NoHeaderError
 
-from ..lrc import LRCLine, LineEnrichment, WordTiming, is_lrc
+from ..lrc import LineEnrichment, LRCLine, WordTiming, is_lrc
 from .cache import FileInfo, LyricsType, cache
 
 # Only formats with reliable lyrics read/write support.
@@ -208,8 +208,7 @@ def encode_word_data(lines: list[LRCLine]) -> str | None:
             entry["end"] = round(line.end, 3)
         if line.words:
             entry["words"] = [
-                {"w": w.word, "s": round(w.start, 3), "e": round(w.end, 3)}
-                for w in line.words
+                {"w": w.word, "s": round(w.start, 3), "e": round(w.end, 3)} for w in line.words
             ]
         data[_ts_key(line.timestamp)] = entry
     return json.dumps(data, separators=(",", ":")) if data else None
@@ -242,9 +241,7 @@ def decode_word_data(text: str | None) -> dict[str, LineEnrichment]:
         words: list[WordTiming] = []
         for w in entry.get("words", []):
             try:
-                words.append(
-                    WordTiming(word=w["w"], start=float(w["s"]), end=float(w["e"]))
-                )
+                words.append(WordTiming(word=w["w"], start=float(w["s"]), end=float(w["e"])))
             except Exception:
                 pass  # skip this word; keep the rest of the line
         result[ts_key] = LineEnrichment(end=end, words=words)

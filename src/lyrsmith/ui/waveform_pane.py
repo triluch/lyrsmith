@@ -20,8 +20,8 @@ from ..keybinds import (
     KB_VOL_UP,
     KB_ZOOM_IN,
     KB_ZOOM_OUT,
-    SEEK_SMALL,
     SEEK_LARGE,
+    SEEK_SMALL,
     VOL_STEP,
 )
 

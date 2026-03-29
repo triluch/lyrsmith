@@ -8,10 +8,12 @@ from textual.widgets import Label
 
 from ..keybinds import (
     KB_BACK,
-    KB_DISCARD_RELOAD,
     KB_DELETE_LINE,
+    KB_DISCARD_RELOAD,
     KB_DOWN,
     KB_EDIT_LINE,
+    KB_LINE_DOWN,
+    KB_LINE_UP,
     KB_MERGE_LINE,
     KB_NEXT_LANG,
     KB_NEXT_MODEL,
@@ -38,10 +40,8 @@ from ..keybinds import (
     KB_VOL_UP,
     KB_ZOOM_IN,
     KB_ZOOM_OUT,
-    KB_LINE_UP,
-    SEEK_SMALL,
     SEEK_LARGE,
-    KB_LINE_DOWN,
+    SEEK_SMALL,
 )
 
 # ------------------------------------------------------------------
@@ -178,7 +178,8 @@ def _build_hints() -> dict[str, str]:
         ),
         "empty": _SEP.join(
             [
-                f"[{_DC}]Browse to a file and press [{_KC}]{fmt_key(KB_SELECT)}[/][{_DC}] to load[/]",
+                f"[{_DC}]Browse to a file and press "
+                f"[{_KC}]{fmt_key(KB_SELECT)}[/][{_DC}] to load[/]",
                 _k(KB_QUIT, "Quit"),
             ]
         ),

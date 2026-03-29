@@ -205,17 +205,13 @@ class Transcriber:
 
         lines: list[LRCLine] = []
         for seg in segs:
-            words = [
-                WordTiming(word=w.word, start=w.start, end=w.end) for w in seg.words
-            ]
+            words = [WordTiming(word=w.word, start=w.start, end=w.end) for w in seg.words]
             # Use the first word's start time — it's more accurate than the
             # segment start, which often includes leading silence or is
             # anchored to the previous segment boundary rather than the actual
             # vocal onset.  Fall back to seg.start when no words are available.
             ts = words[0].start if words else seg.start
-            lines.append(
-                LRCLine(timestamp=ts, text=seg.text.strip(), end=seg.end, words=words)
-            )
+            lines.append(LRCLine(timestamp=ts, text=seg.text.strip(), end=seg.end, words=words))
 
         if on_progress:
             on_progress(f"Done — {len(lines)} lines")

@@ -48,18 +48,14 @@ class LeftPane(Widget):
     # Bubble file-browser events upward, updating FileInfoPanel en route
     # ------------------------------------------------------------------
 
-    def on_file_browser_file_highlighted(
-        self, event: FileBrowser.FileHighlighted
-    ) -> None:
+    def on_file_browser_file_highlighted(self, event: FileBrowser.FileHighlighted) -> None:
         # Debounce: cancel any pending read and reschedule.
         # During rapid keyboard navigation no I/O happens; read fires only
         # once the cursor settles.
         if self._info_timer is not None:
             self._info_timer.stop()
         path = event.path
-        self._info_timer = self.set_timer(
-            _INFO_DEBOUNCE_S, lambda: self._update_file_info(path)
-        )
+        self._info_timer = self.set_timer(_INFO_DEBOUNCE_S, lambda: self._update_file_info(path))
 
     def _update_file_info(self, path: Path) -> None:
         self._info_timer = None

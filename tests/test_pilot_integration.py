@@ -23,7 +23,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from textual.widgets import Label
 
 import lyrsmith.config as config_module
@@ -39,7 +38,6 @@ from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
 from lyrsmith.ui.unsaved_modal import UnsavedModal
 from lyrsmith.ui.waveform_pane import VOL_MAX, ZOOM_MIN, WaveformPane
-
 
 # ---------------------------------------------------------------------------
 # Minimal audio file helper
@@ -338,9 +336,7 @@ class TestFileBrowser:
                 fb = pilot.app.query_one(FileBrowser)
                 lv = pilot.app.query_one("#browser-list")
                 # Find the subdir entry
-                idx = next(
-                    i for i, e in enumerate(fb._entries) if e is not None and e.is_dir()
-                )
+                idx = next(i for i, e in enumerate(fb._entries) if e is not None and e.is_dir())
                 lv.index = idx
                 await pilot.pause()
                 await pilot.press("enter")
@@ -378,9 +374,7 @@ class TestFileBrowser:
                 fb.set_loaded(audio)
                 await pilot.pause()
                 lv = pilot.app.query_one("#browser-list")
-                loaded_items = [
-                    item for item in lv.children if item.has_class("is-loaded")
-                ]
+                loaded_items = [item for item in lv.children if item.has_class("is-loaded")]
                 assert len(loaded_items) == 1
 
         asyncio.run(_impl())
@@ -434,9 +428,7 @@ class TestFileBrowser:
                 await pilot.pause()
                 fb = pilot.app.query_one(FileBrowser)
                 lv = pilot.app.query_one("#browser-list")
-                await pilot.press(
-                    "x"
-                )  # no match — all hidden (x absent in rock/jazz/rock_ballad)
+                await pilot.press("x")  # no match — all hidden (x absent in rock/jazz/rock_ballad)
                 await pilot.pause()
                 assert len(self._visible_names(fb, lv)) == 0
                 await pilot.press("escape")
@@ -529,9 +521,7 @@ class TestFileBrowser:
                 await pilot.pause()
                 assert fb._filter == "s"
                 # Navigate into subdir — filter must reset
-                idx = next(
-                    i for i, e in enumerate(fb._entries) if e is not None and e.is_dir()
-                )
+                idx = next(i for i, e in enumerate(fb._entries) if e is not None and e.is_dir())
                 lv.index = idx
                 await pilot.pause()
                 await pilot.press("enter")
@@ -560,7 +550,6 @@ class TestFileBrowser:
                 await pilot.pause()
                 assert lv.index == idx_before
                 # Confirm we're not on a hidden item
-                from textual.widgets import ListItem as _LI
 
                 assert lv.children[lv.index].display
 
@@ -569,9 +558,7 @@ class TestFileBrowser:
     def test_up_with_filter_skips_hidden_items(self, make_app, monkeypatch):
         """Arrow-up must skip hidden items and land on the nearest visible one."""
         _factory, tmp_path = make_app
-        self._setup_multi(
-            tmp_path, monkeypatch
-        )  # jazz(hidden), rock(vis), rock_ballad(vis)
+        self._setup_multi(tmp_path, monkeypatch)  # jazz(hidden), rock(vis), rock_ballad(vis)
 
         async def _impl():
             async with _factory(path=tmp_path).run_test(headless=True) as pilot:
@@ -590,15 +577,12 @@ class TestFileBrowser:
                 # so we should skip it and land on ".." (always visible).
                 await pilot.press("up")
                 await pilot.pause()
-                from textual.widgets import ListItem as _LI
 
                 assert lv.children[lv.index].display  # must not land on a hidden item
 
         asyncio.run(_impl())
 
-    def test_down_with_filter_navigates_between_visible_items(
-        self, make_app, monkeypatch
-    ):
+    def test_down_with_filter_navigates_between_visible_items(self, make_app, monkeypatch):
         """Arrow-down with filter navigates correctly between visible items."""
         _factory, tmp_path = make_app
         self._setup_multi(tmp_path, monkeypatch)
@@ -622,7 +606,6 @@ class TestFileBrowser:
                 await pilot.pause()
                 idx_after = lv.index
                 assert idx_after > idx_rock  # moved forward
-                from textual.widgets import ListItem as _LI
 
                 assert lv.children[idx_after].display  # landed on a visible item
                 assert fb._entries[idx_after] is not None
@@ -890,8 +873,6 @@ class TestLrcEditorInteractions:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                from textual.widgets import TextArea as _TA
-
                 ed = await self._setup(pilot)
                 words = [
                     WordTiming(" First", 1.0, 1.3),
@@ -1024,9 +1005,7 @@ class TestUndoChain:
                 await pilot.pause()
 
                 # Step 1: stamp (saves snapshot A)
-                ed._current_position = (
-                    6.0  # stamp reads this; player callback inactive in tests
-                )
+                ed._current_position = 6.0  # stamp reads this; player callback inactive in tests
                 await pilot.press("t")
                 await pilot.pause()
 
@@ -1124,9 +1103,7 @@ class TestSaveFlow:
 
         asyncio.run(_impl())
 
-    def test_unsaved_modal_appears_when_loading_over_dirty(
-        self, make_app, monkeypatch, tmp_path
-    ):
+    def test_unsaved_modal_appears_when_loading_over_dirty(self, make_app, monkeypatch, tmp_path):
         _factory, _ = make_app
         audio1 = _make_mp3(tmp_path / "a.mp3")
         audio2 = _make_mp3(tmp_path / "b.mp3")
@@ -1157,9 +1134,7 @@ class TestSaveFlow:
 
         asyncio.run(_impl())
 
-    def test_unsaved_modal_discard_proceeds_with_load(
-        self, make_app, monkeypatch, tmp_path
-    ):
+    def test_unsaved_modal_discard_proceeds_with_load(self, make_app, monkeypatch, tmp_path):
         _factory, _ = make_app
         audio1 = _make_mp3(tmp_path / "a.mp3")
         audio2 = _make_mp3(tmp_path / "b.mp3")
@@ -1187,9 +1162,7 @@ class TestSaveFlow:
 
         asyncio.run(_impl())
 
-    def test_unsaved_modal_save_writes_then_loads(
-        self, make_app, monkeypatch, tmp_path
-    ):
+    def test_unsaved_modal_save_writes_then_loads(self, make_app, monkeypatch, tmp_path):
         _factory, _ = make_app
         audio1 = _make_mp3(tmp_path / "a.mp3")
         audio2 = _make_mp3(tmp_path / "b.mp3")
@@ -1257,16 +1230,12 @@ class TestSaveFlow:
 
         asyncio.run(_impl())
 
-    def test_save_plain_mode_removes_word_data_tag(
-        self, make_app, monkeypatch, tmp_path
-    ):
+    def test_save_plain_mode_removes_word_data_tag(self, make_app, monkeypatch, tmp_path):
         """Saving in plain-text mode must delete the LYRSMITH_WORDS tag from the file."""
         _factory, _ = make_app
         audio = _make_mp3(tmp_path / "track.mp3")
         # Pre-populate word data so there is something to delete
-        write_word_data(
-            audio, [LRCLine(1.0, "Hello", words=[WordTiming(" Hello", 1.0, 1.3)])]
-        )
+        write_word_data(audio, [LRCLine(1.0, "Hello", words=[WordTiming(" Hello", 1.0, 1.3)])])
         assert read_word_data(audio) != {}
 
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
@@ -1393,9 +1362,7 @@ class TestWordDataPersistence:
                 app.action_discard_reload()
                 await pilot.pause()
 
-                line_3_after = next(
-                    l for l in ed._lines if abs(l.timestamp - 3.0) < 0.01
-                )
+                line_3_after = next(l for l in ed._lines if abs(l.timestamp - 3.0) < 0.01)
                 assert line_3_after.words[0].word == " Second"
                 assert line_3_after.end == pytest.approx(5.0)
                 await pilot.press("ctrl+q")
@@ -1766,9 +1733,7 @@ class TestE2EPilotTranscription:
     both run for real so we can assert on waveform data and LRC editor state.
     """
 
-    def test_load_generates_waveform_and_transcription_populates_lrc(
-        self, make_app_real_decode
-    ):
+    def test_load_generates_waveform_and_transcription_populates_lrc(self, make_app_real_decode):
         _factory, _ = make_app_real_decode
 
         async def _impl():
@@ -1795,9 +1760,7 @@ class TestE2EPilotTranscription:
                 assert ed.mode == "lrc", f"Expected lrc mode, got {ed.mode!r}"
                 # Segment count is non-deterministic — Whisper may merge the
                 # whole clip into one line depending on model state and audio.
-                assert len(ed._lines) >= 1, (
-                    f"Expected at least 1 line, got {len(ed._lines)}"
-                )
+                assert len(ed._lines) >= 1, f"Expected at least 1 line, got {len(ed._lines)}"
                 assert ed.is_dirty
 
                 total_words = sum(len(line.words) for line in ed._lines)

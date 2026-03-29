@@ -51,9 +51,7 @@ class LRCLine:
     timestamp: float  # seconds (segment start)
     text: str
     end: float | None = None  # optional segment end time (populated by transcriber)
-    words: list[WordTiming] = field(
-        default_factory=list
-    )  # word-level timing (in-memory only)
+    words: list[WordTiming] = field(default_factory=list)  # word-level timing (in-memory only)
 
     def timestamp_str(self) -> str:
         return _fmt_ts(self.timestamp)
@@ -134,9 +132,7 @@ def active_line_index(lines: list[LRCLine], position: float) -> int:
     return result
 
 
-def attach_word_data(
-    lines: list[LRCLine], enrichment: dict[str, LineEnrichment]
-) -> None:
+def attach_word_data(lines: list[LRCLine], enrichment: dict[str, LineEnrichment]) -> None:
     """Attach persisted enrichment data to matching lines.
 
     *enrichment* is keyed by timestamp formatted to 3 decimal places
@@ -156,9 +152,7 @@ def attach_word_data(
                 line.end = e.end
 
 
-def word_ts_for_split(
-    words: list[WordTiming], second_half: str
-) -> tuple[float | None, int]:
+def word_ts_for_split(words: list[WordTiming], second_half: str) -> tuple[float | None, int]:
     """Find the start time and list index of the word that begins *second_half*.
 
     The first token of *second_half* (stripped of non-word characters,

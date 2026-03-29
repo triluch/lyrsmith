@@ -78,11 +78,7 @@ class TestKeyTypes:
         assert bad == [], f"Non-string KB_ constants: {bad}"
 
     def test_no_empty_keybind(self):
-        empty = [
-            name
-            for name in dir(kb)
-            if name.startswith("KB_") and getattr(kb, name) == ""
-        ]
+        empty = [name for name in dir(kb) if name.startswith("KB_") and getattr(kb, name) == ""]
         assert empty == []
 
 
@@ -114,9 +110,7 @@ class TestConflicts:
 
     def test_no_global_vs_lrc_local_conflict(self):
         overlap = _APP_GLOBALS & _LRC_LOCAL
-        assert overlap == set(), (
-            f"App-global keybind(s) shadow LRC-editor local binds: {overlap}"
-        )
+        assert overlap == set(), f"App-global keybind(s) shadow LRC-editor local binds: {overlap}"
 
     def test_no_global_vs_waveform_local_conflict(self):
         overlap = _APP_GLOBALS & _WAVEFORM_LOCAL

@@ -3,7 +3,6 @@
 from lyrsmith.ui.edit_line_modal import _split_at_cursor
 from lyrsmith.ui.lyrics_editor import _join_lines
 
-
 # ---------------------------------------------------------------------------
 # _split_at_cursor
 # ---------------------------------------------------------------------------

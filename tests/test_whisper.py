@@ -112,9 +112,9 @@ class TestTranscribe:
     def _transcriber_with_mock_model(self) -> tuple[Transcriber, MagicMock]:
         """Return a Transcriber whose WhisperModel is mocked out."""
         t = Transcriber()
-        with patch(_PATCH) as MockModel:
+        with patch(_PATCH):
             t.load_model("base")
-        # t._model is now MockModel's return_value; re-wrap so calls can be inspected
+        # t._model is now the mock's return_value; re-wrap so calls can be inspected
         mock_model = t._model
         return t, mock_model  # type: ignore[return-value]
 

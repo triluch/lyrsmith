@@ -59,32 +59,24 @@ class TestComputeViewStart:
 class TestRender:
     def test_line_count(self):
         pcm, sr = _sine()
-        result = render(
-            pcm, sr, position=2.0, view_start=0.0, zoom=10.0, width=12, height=5
-        )
+        result = render(pcm, sr, position=2.0, view_start=0.0, zoom=10.0, width=12, height=5)
         assert str(result).count("\n") == 4  # 5 lines → 4 newlines
 
     def test_line_width(self):
         pcm, sr = _sine()
-        result = render(
-            pcm, sr, position=2.0, view_start=0.0, zoom=10.0, width=12, height=5
-        )
+        result = render(pcm, sr, position=2.0, view_start=0.0, zoom=10.0, width=12, height=5)
         for line in str(result).split("\n"):
             assert len(line) == 12, f"Expected width 12, got {len(line)!r}"
 
     def test_playhead_row_contains_arrow(self):
         pcm, sr = _sine()
-        result = render(
-            pcm, sr, position=0.1, view_start=0.0, zoom=10.0, width=10, height=8
-        )
+        result = render(pcm, sr, position=0.1, view_start=0.0, zoom=10.0, width=10, height=8)
         assert "▶" in str(result)
 
     def test_playhead_full_width(self):
         pcm, sr = _sine()
         width = 10
-        result = render(
-            pcm, sr, position=0.1, view_start=0.0, zoom=10.0, width=width, height=8
-        )
+        result = render(pcm, sr, position=0.1, view_start=0.0, zoom=10.0, width=width, height=8)
         for line in str(result).split("\n"):
             if line.startswith("▶"):
                 assert len(line) == width
@@ -94,9 +86,7 @@ class TestRender:
 
     def test_empty_pcm(self):
         pcm = np.zeros(0, dtype=np.float32)
-        result = render(
-            pcm, 44100, position=0.0, view_start=0.0, zoom=10.0, width=8, height=4
-        )
+        result = render(pcm, 44100, position=0.0, view_start=0.0, zoom=10.0, width=8, height=4)
         lines = str(result).split("\n")
         assert len(lines) == 4
         for line in lines:
@@ -105,16 +95,12 @@ class TestRender:
     def test_silent_pcm(self):
         # All-zero PCM should not crash
         pcm = np.zeros(44100 * 5, dtype=np.float32)
-        result = render(
-            pcm, 44100, position=1.0, view_start=0.0, zoom=5.0, width=8, height=4
-        )
+        result = render(pcm, 44100, position=1.0, view_start=0.0, zoom=5.0, width=8, height=4)
         assert str(result).count("\n") == 3
 
     def test_single_row(self):
         pcm, sr = _sine()
-        result = render(
-            pcm, sr, position=1.0, view_start=0.0, zoom=5.0, width=6, height=1
-        )
+        result = render(pcm, sr, position=1.0, view_start=0.0, zoom=5.0, width=6, height=1)
         lines = str(result).split("\n")
         assert len(lines) == 1
         assert len(lines[0]) == 6
@@ -122,9 +108,7 @@ class TestRender:
     def test_view_outside_audio_does_not_crash(self):
         pcm, sr = _sine(duration=5.0)
         # View starts well past the end of the audio
-        result = render(
-            pcm, sr, position=100.0, view_start=90.0, zoom=10.0, width=8, height=4
-        )
+        result = render(pcm, sr, position=100.0, view_start=90.0, zoom=10.0, width=8, height=4)
         assert str(result).count("\n") == 3
 
     def test_upper_halfblock_char_present(self):
@@ -135,18 +119,15 @@ class TestRender:
         sr = 100
         pcm = np.zeros(sr, dtype=np.float32)
         pcm[0:16] = 1.0
-        result = render(
-            pcm, sr, position=0.5, view_start=0.0, zoom=1.0, width=10, height=3
-        )
+        result = render(pcm, sr, position=0.5, view_start=0.0, zoom=1.0, width=10, height=3)
         assert "▀" in result.plain
 
     def test_lower_halfblock_char_present(self):
         """▄ appears when the bottom virtual slice of a row has amplitude but the top is silent."""
-        # Row 2: vrow-4 [samples 66..82] stays silent, vrow-5 [83..99] gets amplitude → bottom only → ▄
+        # Row 2: vrow-4 [samples 66..82] stays silent, vrow-5 [83..99] gets amplitude
+        # → bottom half only → ▄
         sr = 100
         pcm = np.zeros(sr, dtype=np.float32)
         pcm[83:100] = 1.0
-        result = render(
-            pcm, sr, position=0.5, view_start=0.0, zoom=1.0, width=10, height=3
-        )
+        result = render(pcm, sr, position=0.5, view_start=0.0, zoom=1.0, width=10, height=3)
         assert "▄" in result.plain

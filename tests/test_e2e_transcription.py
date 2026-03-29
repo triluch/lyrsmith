@@ -46,9 +46,7 @@ class TestE2ETranscription:
         assert len(lines) > 1, f"Expected >1 lines, got {len(lines)}"
 
     def test_lines_have_text(self, transcribed_lines):
-        assert all(line.text.strip() for line in transcribed_lines), (
-            "Some lines have empty text"
-        )
+        assert all(line.text.strip() for line in transcribed_lines), "Some lines have empty text"
 
     def test_lines_have_timestamps(self, transcribed_lines):
         assert all(line.timestamp >= 0.0 for line in transcribed_lines)
