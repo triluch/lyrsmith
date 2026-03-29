@@ -10,9 +10,10 @@ Coverage:
   - Config modal (F2 opens, cancel is safe, save updates config)
   - Waveform pane (space toggles play, seek keys, zoom keys, volume keys)
   - Transcription worker (no-file guard, successful run populates LRC editor)
+  - E2E pilot transcription (real tiny model, real fixture, marked slow)
 
-Transcription content is non-deterministic in production; all transcription
-tests use a stub that returns fixed LRCLines so assertions stay deterministic.
+Most transcription tests use a stub for determinism.  The E2E class at the
+bottom uses the real model and is marked @pytest.mark.slow.
 """
 
 from __future__ import annotations
@@ -123,6 +124,25 @@ def make_app(monkeypatch, tmp_path):
         "lyrsmith.app.decode_to_pcm",
         lambda _path: (np.array([], dtype=np.float32), 22050),
     )
+
+    def _factory(path=None, config=None):
+        return LyrsmithApp(
+            initial_dir=path or tmp_path,
+            config=config or Config(),
+        )
+
+    return _factory, tmp_path
+
+
+@pytest.fixture
+def make_app_real_decode(monkeypatch, tmp_path):
+    """Like make_app but decode_to_pcm is NOT stubbed — waveform decodes for real.
+
+    Use for e2e tests that also verify waveform data is populated.
+    """
+    monkeypatch.setattr(config_module, "_CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(config_module, "_CONFIG_FILE", tmp_path / "config.yaml")
+    monkeypatch.setattr("lyrsmith.app.Player", FakePlayer)
 
     def _factory(path=None, config=None):
         return LyrsmithApp(
@@ -1726,6 +1746,70 @@ class TestTranscription:
                     "See you later",
                 ]
                 ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+
+# ---------------------------------------------------------------------------
+# TestE2EPilotTranscription
+# ---------------------------------------------------------------------------
+
+_E2E_FIXTURE = Path(__file__).parent / "fixtures" / "tts_sample.flac"
+
+
+@pytest.mark.slow
+class TestE2EPilotTranscription:
+    """Full load → waveform → transcription path through Pilot with real I/O.
+
+    FakePlayer keeps libmpv out of the test; decode_to_pcm and WhisperModel
+    both run for real so we can assert on waveform data and LRC editor state.
+    """
+
+    def test_load_generates_waveform_and_transcription_populates_lrc(
+        self, make_app_real_decode
+    ):
+        _factory, _ = make_app_real_decode
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                wf = app.query_one(WaveformPane)
+                ed = app.query_one(LyricsEditor)
+
+                # Full load — triggers real PCM decode worker.
+                app._do_load(_E2E_FIXTURE)
+                await pilot.app.workers.wait_for_complete()
+                await pilot.pause()
+
+                # Waveform was decoded from the actual audio file.
+                assert wf._pcm is not None, "PCM not populated after load"
+                assert len(wf._pcm) > 0, "PCM array is empty after load"
+                assert wf._sample_rate > 0, "Sample rate not set after load"
+
+                # Transcribe using the real tiny model.
+                app.action_transcribe()
+                await pilot.app.workers.wait_for_complete()
+                await pilot.pause()
+
+                assert ed.mode == "lrc", f"Expected lrc mode, got {ed.mode!r}"
+                # Segment count is non-deterministic — Whisper may merge the
+                # whole clip into one line depending on model state and audio.
+                assert len(ed._lines) >= 1, (
+                    f"Expected at least 1 line, got {len(ed._lines)}"
+                )
+                assert ed.is_dirty
+
+                total_words = sum(len(line.words) for line in ed._lines)
+                assert total_words > 0, "No word-level timing data in editor"
+
+                ts = [line.timestamp for line in ed._lines]
+                assert ts == sorted(ts), f"Line timestamps not sorted: {ts}"
+
+                assert all(line.end is not None for line in ed._lines), (
+                    "Some transcribed lines are missing end timestamps"
+                )
+
                 await pilot.press("ctrl+q")
 
         asyncio.run(_impl())
