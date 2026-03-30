@@ -1180,6 +1180,80 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
+    def _assert_highlight_on(self, pilot, ed) -> None:
+        """Assert exactly one ListItem has -highlight at ed._cursor_idx,
+        and lv.index is also in sync (not None, which would allow the ListView
+        to auto-select index 0 when the app is rendering live)."""
+        from textual.widgets import ListItem, ListView
+
+        lv = pilot.app.query_one("#lrc-list", ListView)
+        items = [c for c in lv.children if isinstance(c, ListItem)]
+        highlighted = [i for i, item in enumerate(items) if item.has_class("-highlight")]
+        assert highlighted == [ed._cursor_idx], (
+            f"expected only [{ed._cursor_idx}] highlighted, got {highlighted}"
+        )
+        assert lv.index == ed._cursor_idx, (
+            f"lv.index={lv.index} out of sync with cursor {ed._cursor_idx}; "
+            "None would cause auto-select to 0 in a live terminal"
+        )
+
+    def test_cursor_highlight_visible_after_merge(self, make_app):
+        """-highlight class is applied to the correct item after a merge."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = await self._setup(pilot)
+                ed._set_cursor(3)
+                await pilot.pause()
+
+                await pilot.press("m")
+                await pilot.pause()
+
+                self._assert_highlight_on(pilot, ed)
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_cursor_highlight_visible_after_delete(self, make_app):
+        """-highlight class is applied to the correct item after a delete."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = await self._setup(pilot)
+                ed._set_cursor(3)
+                await pilot.pause()
+
+                await pilot.press("ctrl+d")
+                await pilot.pause()
+
+                self._assert_highlight_on(pilot, ed)
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_cursor_highlight_visible_after_insert_blank(self, make_app):
+        """-highlight class is applied to the new blank line after insertion."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = await self._setup(pilot)
+                ed._set_cursor(3)
+                await pilot.pause()
+
+                await pilot.press("i")
+                await pilot.pause()
+
+                self._assert_highlight_on(pilot, ed)
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestUndoChain

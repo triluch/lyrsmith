@@ -242,6 +242,7 @@ class LyricsEditor(Widget):
         self._current_position: float = 0.0
         self._undo_lines: list[LRCLine] | None = None
         self._undo_cursor: int = 0
+        self._list_items: list[ListItem] = []
 
     # ------------------------------------------------------------------
     # Compose
@@ -364,16 +365,17 @@ class LyricsEditor(Widget):
     def _refresh_list(self) -> None:
         lv = self.query_one("#lrc-list", ListView)
         lv.clear()
+        self._list_items = []
         for i, line in enumerate(self._lines):
             classes = "active-line" if i == self._active_idx else ""
             end_str = line.end_timestamp_str() or ""
-            lv.append(
-                ListItem(
-                    Label(line.display_str(), classes="line-text"),
-                    Label(end_str, classes="end-ts"),
-                    classes=classes,
-                )
+            item = ListItem(
+                Label(line.display_str(), classes="line-text"),
+                Label(end_str, classes="end-ts"),
+                classes=classes,
             )
+            lv.append(item)
+            self._list_items.append(item)
 
     def _refresh_active_style(self) -> None:
         lv = self.query_one("#lrc-list", ListView)
@@ -427,11 +429,26 @@ class LyricsEditor(Widget):
         self._mark_dirty()
 
     def _set_cursor(self, idx: int) -> None:
-        """Move ListView cursor to idx and update internal tracking."""
+        """Move ListView cursor to idx and update internal tracking.
+
+        Deferred via lv.call_after_refresh (not self.call_after_refresh) so
+        it runs after the ListView has processed all pending remove/mount
+        operations from lv.clear() + lv.append().  At that point lv._nodes
+        contains only the new items, so lv.index = idx triggers watch_index
+        on the correct item.  Direct item.highlighted is set too as a
+        belt-and-suspenders backup.  Leaving lv.index = None would cause
+        the ListView to auto-select index 0 when rendering is active.
+        """
         self._cursor_idx = idx
+        items = self._list_items  # snapshot — same objects appended in _refresh_list
         lv = self.query_one("#lrc-list", ListView)
-        lv.index = idx
-        lv.refresh()  # force the highlight CSS to apply in this render frame
+
+        def _apply() -> None:
+            for i, item in enumerate(items):
+                item.highlighted = i == idx
+            lv.index = idx
+
+        lv.call_after_refresh(_apply)
 
     # ------------------------------------------------------------------
     # Keyboard handling (LRC mode)
