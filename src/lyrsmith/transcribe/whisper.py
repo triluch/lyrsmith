@@ -126,7 +126,7 @@ class Transcriber:
             return
 
         if on_progress:
-            on_progress(f"Loading model '{name}'…")
+            on_progress("Loading model…")
 
         # faster-whisper downloads to ~/.cache/huggingface if not present.
         self._model = WhisperModel(
@@ -139,7 +139,7 @@ class Transcriber:
         self._model_key = new_key
 
         if on_progress:
-            on_progress(f"Model '{name}' ready")
+            on_progress("Model ready")
 
     def transcribe(
         self,
@@ -163,7 +163,7 @@ class Transcriber:
             raise RuntimeError("Model not loaded. Call load_model() first.")
 
         if on_progress:
-            on_progress(f"Transcribing {path.name}…")
+            on_progress("Transcribing…")
 
         lang = None if (language is None or language == "auto") else language
         raw_segments, info = self._model.transcribe(
@@ -183,8 +183,13 @@ class Transcriber:
 
         # Materialise the lazy iterator, wrap each segment in _SegmentLike,
         # then apply the word-count splitter before any further processing.
+        # Emit percentage progress via on_progress as each segment arrives —
+        # seg.end / info.duration gives position in the audio.
         segs: list[_SegmentLike] = []
         for seg in raw_segments:
+            if on_progress and info.duration > 0:
+                pct = min(100, int(seg.end / info.duration * 100))
+                on_progress(f"Transcribing… {pct}%")
             wrapped = _SegmentLike(
                 start=seg.start,
                 end=seg.end,
@@ -202,9 +207,6 @@ class Transcriber:
             # vocal onset.  Fall back to seg.start when no words are available.
             ts = words[0].start if words else seg.start
             lines.append(LRCLine(timestamp=ts, text=seg.text.strip(), end=seg.end, words=words))
-
-        if on_progress:
-            on_progress(f"Done — {len(lines)} lines")
 
         return lines
 

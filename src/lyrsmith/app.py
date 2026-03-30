@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import traceback
 from pathlib import Path
 
 from textual.app import App, ComposeResult
@@ -36,6 +37,7 @@ from .metadata.tags import (
 from .transcribe.whisper import AVAILABLE_MODELS, transcriber
 from .ui.bottom_bar import BottomBar
 from .ui.config_modal import ConfigModal
+from .ui.error_modal import ErrorModal
 from .ui.file_browser import FileBrowser
 from .ui.help_modal import HelpModal
 from .ui.left_pane import LeftPane
@@ -247,7 +249,7 @@ class LyrsmithApp(App):
         loop = asyncio.get_running_loop()
         pcm, sr = await loop.run_in_executor(None, decode_to_pcm, path)
         if len(pcm) == 0:
-            self._w_top.set_status("Waveform unavailable")
+            self._w_top.set_status("Waveform N/A")
             return
         self._w_waveform.load_pcm(pcm, sr)
 
@@ -313,7 +315,7 @@ class LyrsmithApp(App):
                 self._w_editor.load_lines(meta, lrc_lines)
             else:
                 self._w_editor.load_plain(lyrics_text)
-        self._w_top.set_status("Reloaded from file")
+        self._w_top.set_status("Reloaded")
 
     def action_transcribe(self) -> None:
         if self._loaded_path is None:
@@ -395,8 +397,8 @@ class LyrsmithApp(App):
             # position and losing the active lyric highlight during playback.
             self._w_editor.clear_dirty()
             return True
-        except Exception as e:
-            self._w_top.set_status(f"Save failed: {e}")
+        except Exception:
+            self.push_screen(ErrorModal("Save failed", traceback.format_exc()))
             return False
 
     async def _run_transcription(self, path: Path) -> None:
@@ -442,13 +444,13 @@ class LyrsmithApp(App):
                     vad_min_silence_ms=vad_min_silence_ms,
                 ),
             )
-        except Exception as e:
-            self._w_top.set_status(f"Transcription failed: {e}")
+        except Exception:
+            self.push_screen(ErrorModal("Transcription failed", traceback.format_exc()))
             return
 
         self._w_editor.load_lines({}, lines)
         self._w_editor.mark_dirty()
-        self._w_top.set_status(f"Transcribed — {len(lines)} lines (unsaved)")
+        self._w_top.set_status("Transcribed (unsaved)")
 
     # ------------------------------------------------------------------
     # Focus tracking for bottom bar context

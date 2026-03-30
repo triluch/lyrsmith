@@ -34,12 +34,12 @@ class TestLoadModel:
             t.load_model("small")
             assert MockModel.call_count == 2
 
-    def test_progress_callback_called_with_model_name(self):
+    def test_progress_callback_called_during_load(self):
         t = Transcriber()
         msgs: list[str] = []
         with patch(_PATCH):
             t.load_model("base", on_progress=msgs.append)
-        assert any("base" in m for m in msgs)
+        assert len(msgs) >= 1
 
     def test_progress_callback_not_required(self):
         t = Transcriber()

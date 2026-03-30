@@ -30,9 +30,11 @@ class TopBar(Widget):
         text-style: bold;
     }
     TopBar #status {
-        width: auto;
+        width: 24;
+        background: $boost;
         color: $text-muted;
         padding: 0 1;
+        overflow: hidden hidden;
     }
     TopBar #model-label {
         width: auto;
