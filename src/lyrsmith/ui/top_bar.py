@@ -15,8 +15,8 @@ from textual.widgets import Label
 from ..keybinds import KB_CONFIG, KB_HELP
 from .bottom_bar import fmt_key
 
-# Width of the #status label content area (widget width 24 − padding 0 1 × 2)
-_STATUS_CONTENT_W = 22
+# Full widget width — padding is removed from CSS and handled manually in content
+_STATUS_CONTENT_W = 24
 # Background style for the filled (progress) portion
 _FILL_STYLE = Style(bgcolor="rgb(0,75,120)")
 # Matches "42%" anywhere in a status string
@@ -44,7 +44,7 @@ class TopBar(Widget):
         width: 24;
         background: $boost;
         color: $text-muted;
-        padding: 0 1;
+        padding: 0 0;
         overflow: hidden hidden;
     }
     TopBar #model-label {
@@ -92,14 +92,16 @@ class TopBar(Widget):
         if m:
             pct = min(100, int(m.group(1)))
             filled = int(_STATUS_CONTENT_W * pct / 100)
-            padded = value.ljust(_STATUS_CONTENT_W)[:_STATUS_CONTENT_W]
+            # Prepend a space so the text has a slight left indent; the fill
+            # background starts from position 0, covering that space too.
+            padded = (" " + value).ljust(_STATUS_CONTENT_W)[:_STATUS_CONTENT_W]
             t = RichText(no_wrap=True, overflow="crop")
             if filled:
                 t.append(padded[:filled], style=_FILL_STYLE)
             t.append(padded[filled:])
             lbl.update(t)
         else:
-            lbl.update(value)
+            lbl.update(" " + value)
 
     def watch_model_name(self, value: str) -> None:
         self.query_one("#model-label", Label).update(f" model:{value}")
