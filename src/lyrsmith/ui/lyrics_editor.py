@@ -38,7 +38,7 @@ from ..keybinds import (
     SEEK_LARGE,
     SEEK_SMALL,
 )
-from ..lrc import LRCLine, active_line_index, parse, serialize, word_ts_for_split
+from ..lrc import LRCLine, active_line_index, parse, serialize
 from ._fast_list_view import FastListView
 from .edit_line_modal import EditLineModal, EditLineResult
 
@@ -551,19 +551,22 @@ class LyricsEditor(Widget):
                 original_end = self._lines[idx].end
                 original_words = self._lines[idx].words
 
-                # Try to derive a word-precise timestamp for the second half.
-                # word_ts_for_split matches the first token of result.second
-                # against the retained WordTiming list and returns the word's
-                # start time (more accurate than any playback-position heuristic).
-                ts_from_words, split_word_idx = word_ts_for_split(original_words, result.second)
+                # Distribute word timing by counting tokens in the first-half
+                # text. This is robust against duplicate words across the split
+                # boundary (text-search would misfire on the first occurrence).
+                # Clamp to the available word count so partial word lists are
+                # handled gracefully.
+                n_first = len(result.text.split())
+                if original_words:
+                    split_word_idx = min(n_first, len(original_words))
+                    first_half_words = original_words[:split_word_idx]
+                    second_words = original_words[split_word_idx:]
+                    ts_from_words = second_words[0].start if second_words else None
+                else:
+                    first_half_words = []
+                    second_words = []
+                    ts_from_words = None
                 has_word_ts = ts_from_words is not None
-
-                # Distribute word timing: first half keeps words before the split
-                # word; second half keeps words from the split word onwards.
-                # When no word match was found, clear both halves — the data
-                # can no longer be reliably attributed to either part.
-                first_half_words = original_words[:split_word_idx] if has_word_ts else []
-                second_words = original_words[split_word_idx:] if has_word_ts else []
 
                 self._lines[idx].text = result.text
                 self._lines[idx].words = first_half_words

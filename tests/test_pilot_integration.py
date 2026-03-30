@@ -965,6 +965,135 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
+    def test_merge_then_split_preserves_words_single_word_first_line(self, make_app):
+        """Merging a one-word line then splitting at the original boundary keeps
+        both halves' word timing (was lost because text-search found index 0)."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                w_first = WordTiming(word=" First", start=1.0, end=1.3)
+                w_line = WordTiming(word=" line", start=1.4, end=1.7)
+                # One-word line 0 that will be merged
+                ed._lines[0].text = "First"
+                ed._lines[0].words = [w_first]
+                # Line 1 becomes the second half after split
+                ed._lines[1].text = "Line two"
+                ed._lines[1].words = [w_line, WordTiming(word=" two", start=1.8, end=2.1)]
+                ed._set_cursor(0)
+                await pilot.pause()
+
+                # Merge lines 0 and 1
+                await pilot.press("m")
+                await pilot.pause()
+                assert len(ed._lines) == 4  # was 5, now 4
+                assert ed._lines[0].text == "First line two"
+
+                # Split back at the original boundary
+                await pilot.press("e")
+                await pilot.pause()
+                assert isinstance(pilot.app.screen, EditLineModal)
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("First")
+                await pilot.pause()
+                ta.move_cursor((0, 5))
+                await pilot.pause()
+                await pilot.press("ctrl+k")
+                await pilot.pause()
+
+                assert ed._lines[0].text == "First"
+                assert ed._lines[0].words == [w_first]
+                assert ed._lines[1].words[0].word == " line"
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_merge_then_split_one_sided_words_preserves_first_half(self, make_app):
+        """The real bug: line A has word timing, line B has none. After merge
+        word_ts_for_split can't find line B's first word in the list, returns
+        (None, 0), has_word_ts=False, and line A's words were cleared from both
+        halves. Count-based split keeps line A's words in the first half."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                w_first = WordTiming(word=" First", start=1.0, end=1.3)
+                ed._lines[0].text = "First"
+                ed._lines[0].words = [w_first]
+                ed._lines[1].text = "line"
+                ed._lines[1].words = []  # no word data on second line
+                ed._set_cursor(0)
+                await pilot.pause()
+
+                await pilot.press("m")
+                await pilot.pause()
+                # merged: "First line", words=[w_first] only
+
+                await pilot.press("e")
+                await pilot.pause()
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("First")
+                await pilot.pause()
+                ta.move_cursor((0, 5))
+                await pilot.pause()
+                await pilot.press("ctrl+k")
+                await pilot.pause()
+
+                # First half must keep w_first; second half has no words (expected)
+                assert ed._lines[0].words == [w_first]
+                assert ed._lines[1].words == []
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_merge_then_split_duplicate_word_at_boundary(self, make_app):
+        """Extra robustness: when line A's word equals line B's first word,
+        text-search would misfire at index 0; count-based split keeps them right."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                w_the_a = WordTiming(word=" the", start=1.0, end=1.1)
+                w_the_b = WordTiming(word=" the", start=2.0, end=2.1)
+                w_end = WordTiming(word=" end", start=2.2, end=2.5)
+                ed._lines[0].text = "the"
+                ed._lines[0].words = [w_the_a]
+                ed._lines[1].text = "the end"
+                ed._lines[1].words = [w_the_b, w_end]
+                ed._set_cursor(0)
+                await pilot.pause()
+
+                await pilot.press("m")
+                await pilot.pause()
+
+                await pilot.press("e")
+                await pilot.pause()
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("the")
+                await pilot.pause()
+                ta.move_cursor((0, 3))
+                await pilot.pause()
+                await pilot.press("ctrl+k")
+                await pilot.pause()
+
+                assert ed._lines[0].words == [w_the_a]
+                assert ed._lines[1].words[0] is w_the_b
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestUndoChain
