@@ -1862,6 +1862,45 @@ class TestTranscription:
 
         asyncio.run(_impl())
 
+    def test_loading_new_file_resets_detected_language(self, make_app, monkeypatch, tmp_path):
+        """After transcription annotates 'auto (en)', loading a new file clears it."""
+        from lyrsmith.transcribe.whisper import transcriber as _tr
+
+        _factory, _ = make_app
+        audio1 = _make_mp3(tmp_path / "first.mp3")
+        audio2 = _make_mp3(tmp_path / "second.mp3")
+        stub_lines = [LRCLine(1.0, "Hello")]
+
+        def _stub_transcribe(*a, **kw):
+            cb = kw.get("on_language_detected")
+            if cb:
+                cb("en")
+            return stub_lines
+
+        monkeypatch.setattr(_tr, "transcribe", _stub_transcribe)
+        monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
+
+        async def _impl():
+            async with _factory(config=Config(whisper_language="auto")).run_test(
+                headless=True
+            ) as pilot:
+                app = pilot.app
+                app._loaded_path = audio1
+                await pilot.pause()
+                app.action_transcribe()
+                await pilot.app.workers.wait_for_complete()
+                await pilot.pause()
+                assert app.query_one(TopBar).language == "auto (en)"
+
+                app._do_load(audio2)
+                await pilot.pause()
+                assert app.query_one(TopBar).language == "auto"
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestE2EPilotTranscription

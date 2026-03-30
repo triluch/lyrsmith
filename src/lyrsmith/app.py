@@ -212,6 +212,7 @@ class LyrsmithApp(App):
 
         # Update top bar
         self._w_top.set_song(info.display_title())
+        self._w_top.set_language(self._config.whisper_language)
 
         # Update file browser marker
         self._w_left.set_loaded(path)
