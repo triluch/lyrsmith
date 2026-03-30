@@ -1094,6 +1094,92 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
+    def test_merge_line_cleared_via_edit_modal_is_deleted(self, make_app):
+        """A line whose text was cleared through the edit modal behaves as blank
+        on merge: the blank is removed and the adjacent content line is untouched."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                w = WordTiming(word=" line", start=2.0, end=2.5)
+                ed._lines[0].text = "First line"
+                ed._lines[0].end = 1.8
+                ed._lines[0].words = [WordTiming(word=" First", start=1.0, end=1.4), w]
+                ed._lines[1].text = "Second line"
+                ed._lines[1].timestamp = 2.0
+                ed._lines[1].end = 3.0
+                ed._lines[1].words = [WordTiming(word=" Second", start=2.0, end=2.6)]
+                ed._set_cursor(0)
+                await pilot.pause()
+
+                # Clear line 0's text via the edit modal
+                await pilot.press("e")
+                await pilot.pause()
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("")
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                assert ed._lines[0].text == ""
+
+                # Merge: blank line 0 should vanish, line 1 fully unchanged
+                await pilot.press("m")
+                await pilot.pause()
+                assert ed._lines[0].text == "Second line"
+                assert ed._lines[0].timestamp == pytest.approx(2.0)
+                assert ed._lines[0].end == pytest.approx(3.0)
+                assert ed._lines[0].words[0].word == " Second"
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_blank_line_edited_to_content_then_merged(self, make_app):
+        """A blank line (e.g. inserted with 'i') edited to have content and then
+        merged keeps the blank line's start timestamp and the next line's end."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                ed._lines[0].timestamp = 1.0
+                ed._lines[0].end = 2.0
+                ed._lines[0].text = ""
+                ed._lines[0].words = []
+                ed._lines[1].timestamp = 2.0
+                ed._lines[1].end = 3.0
+                ed._lines[1].text = "world"
+                ed._lines[1].words = []
+                ed._set_cursor(0)
+                await pilot.pause()
+
+                # Edit blank line to add content
+                await pilot.press("e")
+                await pilot.pause()
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("Hello")
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                assert ed._lines[0].text == "Hello"
+
+                # Normal merge: first line's ts, second line's end
+                await pilot.press("m")
+                await pilot.pause()
+                assert ed._lines[0].timestamp == pytest.approx(1.0)
+                assert ed._lines[0].end == pytest.approx(3.0)
+                assert "Hello" in ed._lines[0].text
+                assert "world" in ed._lines[0].text.lower()
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestUndoChain

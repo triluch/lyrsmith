@@ -17,6 +17,7 @@ from textual.widgets import Label, ListItem, ListView, TextArea
 from ..keybinds import (
     KB_DELETE_LINE,
     KB_EDIT_LINE,
+    KB_INSERT_LINE,
     KB_MERGE_LINE,
     KB_NUDGE_FINE_BACK,
     KB_NUDGE_FINE_FWD,
@@ -98,19 +99,54 @@ def _op_merge(lines: list[LRCLine], idx: int) -> tuple[list[LRCLine], int]:
     """Merge line at idx with the following line.
 
     Mutates the list in place; the merged line keeps idx's timestamp.
+    If either line has blank text it is absorbed cleanly without concatenation
+    (avoids a leading space or spurious lower-casing from _join_lines).
     Returns (lines, idx) unchanged when idx is the last line or out of range.
     """
     if not (0 <= idx < len(lines) - 1):
         return lines, idx
-    merged = _join_lines(lines[idx].text, lines[idx + 1].text)
-    lines[idx] = LRCLine(
-        lines[idx].timestamp,
-        merged,
-        end=lines[idx + 1].end,
-        words=lines[idx].words + lines[idx + 1].words,
-    )
+    a, b = lines[idx], lines[idx + 1]
+    if not b.text.strip():
+        # Next line is blank (covers both-blank too) — delete it, keep current unchanged.
+        lines[idx] = LRCLine(a.timestamp, a.text, end=a.end, words=list(a.words))
+    elif not a.text.strip():
+        # Current line is blank — delete it, keep next line completely unchanged.
+        lines[idx] = LRCLine(b.timestamp, b.text, end=b.end, words=list(b.words))
+    else:
+        lines[idx] = LRCLine(
+            a.timestamp,
+            _join_lines(a.text, b.text),
+            end=b.end,
+            words=a.words + b.words,
+        )
     lines.pop(idx + 1)
     return lines, idx
+
+
+def _op_insert_blank(lines: list[LRCLine], idx: int) -> tuple[list[LRCLine], int]:
+    """Insert a blank LRCLine immediately after idx.
+
+    Timestamp: the current line's end, or midpoint to the next line if no
+    end is set, or +2 s when there is no next line.
+    End: the next line's timestamp if one exists, otherwise None.
+    Returns (lines, new_cursor_idx) where new_cursor_idx points at the
+    inserted line.  Returns unchanged when idx is out of range.
+    """
+    if not (0 <= idx < len(lines)):
+        return lines, idx
+    current = lines[idx]
+    next_line = lines[idx + 1] if idx + 1 < len(lines) else None
+
+    if current.end is not None:
+        new_ts = current.end
+    elif next_line is not None:
+        new_ts = (current.timestamp + next_line.timestamp) / 2
+    else:
+        new_ts = current.timestamp + 2.0
+
+    new_end = next_line.timestamp if next_line is not None else None
+    lines.insert(idx + 1, LRCLine(timestamp=new_ts, text="", end=new_end, words=[]))
+    return lines, idx + 1
 
 
 def _join_lines(a: str, b: str) -> str:
@@ -479,6 +515,10 @@ class LyricsEditor(Widget):
             event.stop()
             self._merge(self._cursor_idx)
 
+        elif key == KB_INSERT_LINE:
+            event.stop()
+            self._insert_blank(self._cursor_idx)
+
         elif key == KB_EDIT_LINE:
             event.stop()
             if self._is_playing:
@@ -512,6 +552,15 @@ class LyricsEditor(Widget):
         self._mark_dirty()
         self._refresh_list()
         self._set_cursor(idx)
+
+    def _insert_blank(self, idx: int) -> None:
+        if not (0 <= idx < len(self._lines)):
+            return
+        self._save_undo()
+        self._lines, new_cursor = _op_insert_blank(self._lines, idx)
+        self._mark_dirty()
+        self._refresh_list()
+        self._set_cursor(new_cursor)
 
     def _start_edit(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
