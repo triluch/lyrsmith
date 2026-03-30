@@ -30,6 +30,12 @@ On Debian/Ubuntu:
 apt install libmpv-dev ffmpeg
 ```
 
+On macOS (experimental):
+```
+brew install mpv
+```
+GPU-accelerated transcription is not available on macOS; transcription runs on CPU.
+
 **NVIDIA GPU** — if you want GPU-accelerated transcription, also install libcublas and make sure it is registered with ldconfig:
 
 ```
