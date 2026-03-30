@@ -408,6 +408,8 @@ class LyrsmithApp(App):
         model = self._config.whisper_model
         language = self._config.whisper_language
         max_words = self._config.whisper_max_words_per_line
+        vad_threshold = self._config.vad_threshold
+        vad_min_silence_ms = self._config.vad_min_silence_ms
 
         def _on_lang_detected(lang: str) -> None:
             if language in ("auto", None) and lang:
@@ -436,6 +438,8 @@ class LyrsmithApp(App):
                     on_progress=_progress,
                     max_words_per_line=max_words,
                     on_language_detected=_on_lang_detected,
+                    vad_threshold=vad_threshold,
+                    vad_min_silence_ms=vad_min_silence_ms,
                 ),
             )
         except Exception as e:

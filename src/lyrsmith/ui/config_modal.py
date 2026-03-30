@@ -42,6 +42,14 @@ _FIELD_DESCRIPTIONS: dict[str, str] = {
         "Split transcribed segments that exceed this many words (0 = disabled).\n"
         "Splits favour natural phrase boundaries using syllable balance and conjunctions."
     ),
+    "f-vad-threshold": (
+        "Silero VAD speech-probability threshold (0 = VAD disabled).\n"
+        "For music/vocals try 0.0001–0.001; lower values pass more audio through."
+    ),
+    "f-vad-min-silence-ms": (
+        "Minimum silence gap (ms) between detected speech chunks.\n"
+        "Chunks separated by less than this are merged into one."
+    ),
     "f-waveform-zoom": (
         "Visible waveform window in seconds centred on the playhead.\n"
         "Smaller values zoom in; larger values show more context."
@@ -213,6 +221,22 @@ class ConfigModal(ModalScreen[Config | None]):
                         id="f-max-words-per-line",
                         classes="field-input",
                     )
+                with Horizontal(classes="field-row"):
+                    yield Label("VAD threshold (0=off)", classes="field-label")
+                    yield Input(
+                        value=str(cfg.vad_threshold),
+                        placeholder="0.0001  (0 to disable)",
+                        id="f-vad-threshold",
+                        classes="field-input",
+                    )
+                with Horizontal(classes="field-row"):
+                    yield Label("VAD min silence (ms)", classes="field-label")
+                    yield Input(
+                        value=str(cfg.vad_min_silence_ms),
+                        placeholder="500",
+                        id="f-vad-min-silence-ms",
+                        classes="field-input",
+                    )
 
                 # ── Display ───────────────────────────────────────────────
                 yield Label("Display", classes="section-header")
@@ -280,6 +304,13 @@ class ConfigModal(ModalScreen[Config | None]):
             if max_words_per_line < 0:
                 raise ValueError("max words/line must be >= 0")
 
+            vad_threshold = float(self._get("f-vad-threshold") or "0")
+            vad_min_silence_ms = int(self._get("f-vad-min-silence-ms") or "500")
+            if vad_threshold < 0:
+                raise ValueError("VAD threshold must be >= 0")
+            if vad_min_silence_ms < 0:
+                raise ValueError("VAD min silence must be >= 0")
+
             waveform_zoom = float(self._get("f-waveform-zoom") or "20.0")
             if waveform_zoom <= 0:
                 raise ValueError("waveform zoom must be > 0")
@@ -299,6 +330,8 @@ class ConfigModal(ModalScreen[Config | None]):
                 inter_threads=inter_threads,
                 compute_type=compute_type,
                 whisper_max_words_per_line=max_words_per_line,
+                vad_threshold=vad_threshold,
+                vad_min_silence_ms=vad_min_silence_ms,
                 last_directory=self._cfg.last_directory,
             )
         )

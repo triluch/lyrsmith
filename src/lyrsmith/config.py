@@ -32,6 +32,10 @@ class Config:
     # largest inter-word pause gap until each segment has at most this many words.
     # 0 disables splitting and lets Whisper decide segment boundaries.
     whisper_max_words_per_line: int = 0
+    # VAD — Silero voice-activity detection pre-filters the audio before Whisper.
+    # vad_threshold=0 disables VAD entirely; for music/vocals ~0.00005–0.001 works.
+    vad_threshold: float = 0.0001
+    vad_min_silence_ms: int = 500
     last_directory: str = ""
 
 

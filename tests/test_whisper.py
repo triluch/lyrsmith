@@ -282,6 +282,24 @@ class TestTranscribe:
         mock_model.transcribe.return_value = ([], MagicMock())
         t.transcribe(Path("test.mp3"))  # no on_language_detected arg
 
+    def test_vad_enabled_when_threshold_nonzero(self):
+        """Positive vad_threshold passes vad_filter=True and the parameters dict."""
+        t, mock_model = self._transcriber_with_mock_model()
+        mock_model.transcribe.return_value = ([], MagicMock())
+        t.transcribe(Path("test.mp3"), vad_threshold=0.001, vad_min_silence_ms=300)
+        _, kwargs = mock_model.transcribe.call_args
+        assert kwargs["vad_filter"] is True
+        assert kwargs["vad_parameters"] == {"threshold": 0.001, "min_silence_duration_ms": 300}
+
+    def test_vad_disabled_when_threshold_zero(self):
+        """vad_threshold=0 passes vad_filter=False and vad_parameters=None."""
+        t, mock_model = self._transcriber_with_mock_model()
+        mock_model.transcribe.return_value = ([], MagicMock())
+        t.transcribe(Path("test.mp3"), vad_threshold=0)
+        _, kwargs = mock_model.transcribe.call_args
+        assert kwargs["vad_filter"] is False
+        assert kwargs["vad_parameters"] is None
+
 
 class TestSplitSegment:
     """Unit tests for the _split_segment post-processor."""

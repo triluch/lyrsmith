@@ -148,6 +148,8 @@ class Transcriber:
         on_progress: Callable[[str], None] | None = None,
         max_words_per_line: int = 0,
         on_language_detected: Callable[[str], None] | None = None,
+        vad_threshold: float = 0.0001,
+        vad_min_silence_ms: int = 500,
     ) -> list[LRCLine]:
         """Transcribe *path* and return one LRCLine per (post-processed) segment.
 
@@ -155,6 +157,7 @@ class Transcriber:
         max_words_per_line — when > 0, long segments are recursively split at
             the largest inter-word pause gap until each segment has at most
             this many words.  0 disables splitting.
+        vad_threshold — Silero VAD speech probability threshold; 0 disables VAD.
         """
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -167,6 +170,12 @@ class Transcriber:
             str(path),
             language=lang,
             word_timestamps=True,
+            vad_filter=vad_threshold > 0,
+            vad_parameters=(
+                {"threshold": vad_threshold, "min_silence_duration_ms": vad_min_silence_ms}
+                if vad_threshold > 0
+                else None
+            ),
         )
         detected_lang: str = info.language if isinstance(info.language, str) else ""
         if on_language_detected:
