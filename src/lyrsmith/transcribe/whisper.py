@@ -158,7 +158,7 @@ class Transcriber:
         on_progress: Callable[[str], None] | None = None,
         max_words_per_line: int = 0,
         on_language_detected: Callable[[str], None] | None = None,
-        vad_threshold: float = 0.0001,
+        vad_threshold: float = 0.0,
         vad_min_silence_ms: int = 500,
     ) -> list[LRCLine]:
         """Transcribe *path* and return one LRCLine per (post-processed) segment.

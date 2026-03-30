@@ -81,6 +81,8 @@ Press **F1** inside the app to see all keybindings.
 
 **Recommended model:** `large-v3-turbo` (the default) gives good results at reasonable speed. `large-v3` is noticeably more accurate for tricky lyrics but slower and needs more RAM. Configure via **F2**.
 
+**Voice Activity Detection (VAD)** is disabled by default. If you're getting a lot of repeated lines or hallucinated text in the transcription, try enabling it with a low threshold like `0.00005`–`0.0001` — this pre-filters the audio before Whisper and can significantly improve results on tracks with instrumental sections or background noise.
+
 ---
 
 And yeah, of course it is slopped out, what did you expect in current times?

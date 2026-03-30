@@ -43,12 +43,13 @@ _FIELD_DESCRIPTIONS: dict[str, str] = {
         "Splits favour natural phrase boundaries using syllable balance and conjunctions."
     ),
     "f-vad-threshold": (
-        "Silero VAD speech-probability threshold (0 = VAD disabled).\n"
-        "For music/vocals try 0.0001–0.001; lower values pass more audio through."
+        "Voice Activity Detection threshold (0 = disabled). VAD pre-filters audio\n"
+        "before Whisper, skipping non-speech sections. For vocals try 0.0001–0.001;\n"
+        "lower values pass more audio through. Disabled by default."
     ),
     "f-vad-min-silence-ms": (
-        "Minimum silence gap (ms) between detected speech chunks.\n"
-        "Chunks separated by less than this are merged into one."
+        "Voice Activity Detection: minimum silence gap (ms) between speech chunks.\n"
+        "Gaps shorter than this merge adjacent chunks into one segment."
     ),
     "f-waveform-zoom": (
         "Visible waveform window in seconds centred on the playhead.\n"
@@ -225,7 +226,7 @@ class ConfigModal(ModalScreen[Config | None]):
                     yield Label("VAD threshold (0=off)", classes="field-label")
                     yield Input(
                         value=str(cfg.vad_threshold),
-                        placeholder="0.0001  (0 to disable)",
+                        placeholder="0  (disabled by default)",
                         id="f-vad-threshold",
                         classes="field-input",
                     )
