@@ -79,6 +79,27 @@ class TestOpNudge:
         assert result == []
         assert cursor == 0
 
+    def test_nudge_shifts_end_timestamp(self):
+        line = LRCLine(2.0, "A", end=4.0)
+        result, _ = _op_nudge([line], 0, 0.5)
+        assert result[0].end == pytest.approx(4.5)
+
+    def test_nudge_shifts_word_timings(self):
+        line = LRCLine(2.0, "A", words=[_wt(" hello", 2.1, 2.6), _wt(" world", 2.7, 3.2)])
+        result, _ = _op_nudge([line], 0, 1.0)
+        assert result[0].words[0].start == pytest.approx(3.1)
+        assert result[0].words[0].end == pytest.approx(3.6)
+        assert result[0].words[1].start == pytest.approx(3.7)
+        assert result[0].words[1].end == pytest.approx(4.2)
+
+    def test_nudge_clamps_end_and_words_to_zero(self):
+        line = LRCLine(1.0, "A", end=2.0, words=[_wt(" hi", 1.1, 1.5)])
+        result, _ = _op_nudge([line], 0, -99.0)
+        assert result[0].timestamp == pytest.approx(0.0)
+        assert result[0].end == pytest.approx(0.0)
+        assert result[0].words[0].start == pytest.approx(0.0)
+        assert result[0].words[0].end == pytest.approx(0.0)
+
 
 # ---------------------------------------------------------------------------
 # _op_delete

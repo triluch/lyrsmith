@@ -71,6 +71,11 @@ def _op_nudge(lines: list[LRCLine], idx: int, delta: float) -> tuple[list[LRCLin
         return lines, idx
     line = lines[idx]
     line.timestamp = max(0.0, line.timestamp + delta)
+    if line.end is not None:
+        line.end = max(0.0, line.end + delta)
+    for w in line.words:
+        w.start = max(0.0, w.start + delta)
+        w.end = max(0.0, w.end + delta)
     lines.sort(key=lambda l: l.timestamp)
     new_idx = next((i for i, l in enumerate(lines) if l is line), idx)
     return lines, new_idx
