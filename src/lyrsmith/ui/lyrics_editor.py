@@ -521,12 +521,19 @@ class LyricsEditor(Widget):
                     return  # nothing changed — leave undo buffer intact
                 self._save_undo()
                 self._lines[idx].text = result.text
-                # Word alignment is no longer valid once text has been manually
-                # edited; clear so a subsequent split falls back to the heuristic
-                # rather than matching against stale word data.
-                # (end timestamp is kept — it's the segment boundary, unaffected
-                # by word-level edits.)
-                self._lines[idx].words = []
+                # If the word count is unchanged, patch the word text in-place
+                # so timing is preserved (e.g. fixing a single typo).
+                # If the count changed, the alignment is stale — clear it so
+                # subsequent splits fall back to the gap/syllable heuristic.
+                # (end timestamp is always kept; it's the segment boundary.)
+                new_tokens = result.text.split()
+                existing = self._lines[idx].words
+                if new_tokens and len(new_tokens) == len(existing):
+                    for w, tok in zip(existing, new_tokens):
+                        prefix = " " if w.word.startswith(" ") else ""
+                        w.word = prefix + tok
+                else:
+                    self._lines[idx].words = []
                 self._mark_dirty()
                 self._refresh_list()
                 self._set_cursor(idx)

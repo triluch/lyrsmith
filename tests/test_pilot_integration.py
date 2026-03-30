@@ -836,8 +836,8 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
-    def test_edit_save_clears_word_data(self, make_app):
-        """Changing line text via the edit modal must invalidate word timing."""
+    def test_edit_save_clears_word_data_when_word_count_changes(self, make_app):
+        """Changing text with a different word count must invalidate word timing."""
         _factory, _ = make_app
 
         async def _impl():
@@ -891,6 +891,41 @@ class TestLrcEditorInteractions:
                 assert not isinstance(pilot.app.screen, EditLineModal)
                 # Words must be intact: no undo was saved, nothing was cleared
                 assert ed._lines[0].words == words
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_edit_same_word_count_preserves_timing(self, make_app):
+        """Fixing a typo (same word count) keeps timing; only the word text is updated."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                ed = await self._setup(pilot)
+                ed._lines[0].words = [
+                    WordTiming(" First", 1.0, 1.3),
+                    WordTiming(" line", 1.4, 1.7),
+                ]
+                ed._set_cursor(0)
+                await pilot.pause()
+                await pilot.press("e")
+                await pilot.pause()
+                assert isinstance(pilot.app.screen, EditLineModal)
+                ta = pilot.app.screen.query_one("#edit-area", _TA)
+                ta.load_text("Fist line")  # typo fix, still 2 words
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                assert not isinstance(pilot.app.screen, EditLineModal)
+                assert ed._lines[0].text == "Fist line"
+                assert len(ed._lines[0].words) == 2
+                assert ed._lines[0].words[0].word == " Fist"
+                assert ed._lines[0].words[0].start == pytest.approx(1.0)
+                assert ed._lines[0].words[0].end == pytest.approx(1.3)
+                assert ed._lines[0].words[1].word == " line"
+                ed.clear_dirty()
                 await pilot.press("ctrl+q")
 
         asyncio.run(_impl())
