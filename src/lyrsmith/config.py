@@ -15,7 +15,7 @@ _CONFIG_FILE = _CONFIG_DIR / "config.yaml"
 
 @dataclass
 class Config:
-    whisper_model: str = "base"
+    whisper_model: str = "large-v3-turbo"
     whisper_language: str = "auto"
     # Languages cycled by Ctrl+L. Edit this list in the config file to taste.
     whisper_languages: list[str] = field(

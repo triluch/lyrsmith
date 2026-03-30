@@ -15,7 +15,7 @@ from .bottom_bar import fmt_key
 _FIELD_DESCRIPTIONS: dict[str, str] = {
     "f-whisper-model": (
         "Whisper model size. Larger models are more accurate but slower and need more RAM.\n"
-        "Options: tiny, base, small, medium, large-v2, large-v3"
+        "Options: tiny, base, small, medium, large-v3-turbo, large-v3"
     ),
     "f-compute-type": (
         "Quantisation type for the model weights.\n"
@@ -158,7 +158,7 @@ class ConfigModal(ModalScreen[Config | None]):
                     yield Label("Model", classes="field-label")
                     yield Input(
                         value=cfg.whisper_model,
-                        placeholder="base / small / medium / large-v2 / large-v3",
+                        placeholder="large-v3-turbo / base / small / large-v3",
                         id="f-whisper-model",
                         classes="field-input",
                     )

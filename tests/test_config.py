@@ -15,7 +15,7 @@ def _patch(monkeypatch, tmp_path):
 
 class TestDefaults:
     def test_default_model(self):
-        assert Config().whisper_model == "base"
+        assert Config().whisper_model == "large-v3-turbo"
 
     def test_default_language(self):
         assert Config().whisper_language == "auto"
@@ -83,13 +83,13 @@ class TestLoadEdgeCases:
     def test_missing_file_returns_defaults(self, tmp_path, monkeypatch):
         monkeypatch.setattr(config_module, "_CONFIG_FILE", tmp_path / "nonexistent.yaml")
         cfg = load()
-        assert cfg.whisper_model == "base"
+        assert cfg.whisper_model == "large-v3-turbo"
 
     def test_malformed_yaml_returns_defaults(self, tmp_path, monkeypatch):
         cfg_file = _patch(monkeypatch, tmp_path)
         cfg_file.write_text("this: is: invalid: yaml: :::: }{")
         cfg = load()  # must not raise
-        assert cfg.whisper_model == "base"
+        assert cfg.whisper_model == "large-v3-turbo"
 
     def test_unknown_keys_ignored(self, tmp_path, monkeypatch):
         cfg_file = _patch(monkeypatch, tmp_path)

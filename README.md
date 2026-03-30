@@ -77,6 +77,10 @@ lyrsmith [DIRECTORY]
 
 If no directory is given, the last-used directory is restored (or the current working directory on first run).
 
+Press **F1** inside the app to see all keybindings.
+
+**Recommended model:** `large-v3-turbo` (the default) gives good results at reasonable speed. `large-v3` is noticeably more accurate for tricky lyrics but slower and needs more RAM. Configure via **F2**.
+
 ---
 
 And yeah, of course it is slopped out, what did you expect in current times?
