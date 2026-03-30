@@ -1,0 +1,33 @@
+# lang:     fr
+# treebank: UD_French-GSD  (fr_gsd-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   354,648  total  |  9,436  CCONJ  |  18  unique
+# threshold: freq >= 47  (= max(2, 9436 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+et            # 7211
+ou            # 802
+mais          # 734
+puis          # 232
+car           # 114
+dont          # 87
+soit          # 64
+ni            # 58
+
+# --- below threshold (freq < 47) — review before including ---
+#c'est-à-dire  # 44
+#voire         # 23
+#comme         # 22
+#sauf          # 12
+#or            # 10
+#donc          # 10
+#sinon         # 5
+#voir          # 4
+#and           # 3
+#est           # 1

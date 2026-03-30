@@ -1,0 +1,26 @@
+# lang:     el
+# treebank: UD_Greek-GDT  (el_gdt-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   42,326  total  |  1,363  CCONJ  |  11  unique
+# threshold: freq >= 6  (= max(2, 1363 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+και         # 1098
+αλλά        # 82
+ή           # 56
+ωστόσο      # 45
+όμως        # 40
+ούτε        # 17
+κι          # 10
+είτε        # 10
+
+# --- below threshold (freq < 6) — review before including ---
+#οπότε       # 3
+#πλην        # 1
+#παρά        # 1

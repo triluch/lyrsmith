@@ -1,0 +1,45 @@
+# lang:     id
+# treebank: UD_Indonesian-GSD  (id_gsd-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   97,602  total  |  2,876  CCONJ  |  30  unique
+# threshold: freq >= 14  (= max(2, 2876 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+dan          # 2238
+atau         # 335
+serta        # 78
+namun        # 77
+tetapi       # 53
+maupun       # 34
+tapi         # 23
+
+# --- below threshold (freq < 14) — review before including ---
+#sama         # 7
+#baik         # 6
+#sedangkan    # 3
+#melainkan    # 3
+#sambil       # 1
+#cagar        # 1
+#jadi         # 1
+#akibat       # 1
+#kemudian     # 1
+#supaya       # 1
+#ankara       # 1
+#sewaktu      # 1
+#sementara    # 1
+#seandainya   # 1
+#tan          # 1
+#purbalingga  # 1
+#maupuan      # 1
+#yaitu        # 1
+#bagaimana    # 1
+#bila         # 1
+#n            # 1
+#alias        # 1
+#lagi         # 1

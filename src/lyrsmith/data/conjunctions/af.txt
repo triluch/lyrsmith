@@ -1,0 +1,23 @@
+# lang:     af
+# treebank: UD_Afrikaans-AfriBooms  (af_afribooms-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   33,878  total  |  1,327  CCONJ  |  8  unique
+# threshold: freq >= 6  (= max(2, 1327 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+en          # 1006
+of          # 257
+asook       # 24
+maar        # 24
+want        # 7
+
+# --- below threshold (freq < 6) — review before including ---
+#én          # 4
+#óf          # 4
+#plus        # 1

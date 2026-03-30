@@ -1,0 +1,56 @@
+# lang:     pt
+# treebank: UD_Portuguese-GSD  (pt_gsd-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   255,116  total  |  8,314  CCONJ  |  41  unique
+# threshold: freq >= 41  (= max(2, 8314 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+e               # 5179
+que             # 1512
+mas             # 525
+ou              # 336
+se              # 183
+quando          # 150
+como            # 85
+porque          # 74
+pois            # 47
+enquanto        # 45
+
+# --- below threshold (freq < 41) — review before including ---
+#embora          # 31
+#nem             # 30
+#caso            # 21
+#quanto          # 18
+#porém           # 12
+#conforme        # 9
+#&amp;           # 9
+#tanto           # 6
+#segundo         # 6
+#and             # 5
+#mesmo           # 4
+#&               # 3
+#mais            # 3
+#eo              # 2
+#i.e.            # 2
+#logo            # 2
+#seja            # 1
+#animado.quando  # 1
+#então           # 1
+#portanto        # 1
+#de              # 1
+#q               # 1
+#contudo         # 1
+#qua             # 1
+#y               # 1
+#et              # 1
+#n               # 1
+#he              # 1
+#até             # 1
+#entretanto      # 1
+#a               # 1

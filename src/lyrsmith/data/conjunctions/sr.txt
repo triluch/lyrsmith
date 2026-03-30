@@ -1,0 +1,31 @@
+# lang:     sr
+# treebank: UD_Serbian-SET  (sr_set-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   74,259  total  |  2,541  CCONJ  |  16  unique
+# threshold: freq >= 12  (= max(2, 2541 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+i           # 2031
+a           # 183
+ali         # 129
+ili         # 109
+nego        # 34
+već         # 15
+pa          # 12
+
+# --- below threshold (freq < 12) — review before including ---
+#ni          # 8
+#niti        # 7
+#te          # 3
+#dakle       # 3
+#bilo        # 2
+#kao         # 2
+#pošto       # 1
+#odnosno     # 1
+#no          # 1

@@ -1,0 +1,23 @@
+# lang:     ca
+# treebank: UD_Catalan-AnCora  (ca_ancora-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   429,578  total  |  11,797  CCONJ  |  8  unique
+# threshold: freq >= 58  (= max(2, 11797 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+i           # 10038
+o           # 629
+però        # 621
+ni          # 211
+sinó        # 138
+mentre      # 129
+
+# --- below threshold (freq < 58) — review before including ---
+#y           # 27
+#que         # 4

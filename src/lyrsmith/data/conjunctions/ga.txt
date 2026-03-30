@@ -1,0 +1,26 @@
+# lang:     ga
+# treebank: UD_Irish-IDT  (ga_idt-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   95,881  total  |  3,241  CCONJ  |  11  unique
+# threshold: freq >= 16  (= max(2, 3241 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+agus        # 2614
+nó          # 402
+ná          # 116
+is          # 84
+
+# --- below threshold (freq < 16) — review before including ---
+#no          # 7
+#ach         # 6
+#&           # 6
+#a's         # 2
+#'gus        # 2
+#gus         # 1
+#&amp;       # 1

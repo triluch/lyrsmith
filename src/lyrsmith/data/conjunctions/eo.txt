@@ -1,0 +1,21 @@
+# lang:     eo
+# treebank: UD_Esperanto-Prago  (eo_prago-ud-test.conllu)
+# fetched:  2026-03-30
+# tokens:   3,165  total  |  141  CCONJ  |  6  unique
+# threshold: freq >= 2  (= max(2, 141 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+kaj         # 87
+aŭ          # 40
+sed         # 8
+nek         # 3
+k           # 2
+
+# --- below threshold (freq < 2) — review before including ---
+#ol          # 1

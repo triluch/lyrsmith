@@ -1,0 +1,29 @@
+# lang:     is
+# treebank: UD_Icelandic-Modern  (is_modern-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   61,816  total  |  2,181  CCONJ  |  14  unique
+# threshold: freq >= 10  (= max(2, 2181 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+og          # 1539
+en          # 345
+eða         # 243
+bæði        # 19
+o.          # 11
+
+# --- below threshold (freq < 10) — review before including ---
+#né          # 6
+#-           # 5
+#til         # 5
+#hvorki      # 2
+#+           # 2
+#ýmist       # 1
+#plús        # 1
+#milli       # 1
+#o.s.frv.    # 1

@@ -1,0 +1,46 @@
+# lang:     es
+# treebank: UD_Spanish-GSD  (es_gsd-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   382,444  total  |  12,229  CCONJ  |  31  unique
+# threshold: freq >= 61  (= max(2, 12229 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+y           # 9204
+o           # 963
+pero        # 640
+que         # 574
+e           # 211
+como        # 197
+ni          # 138
+sino        # 75
+
+# --- below threshold (freq < 61) — review before including ---
+#mientras    # 46
+#si          # 30
+#pues        # 26
+#u           # 24
+#aunque      # 21
+#i           # 20
+#&           # 12
+#para        # 11
+#and         # 10
+#ó           # 5
+#sea         # 4
+#tanto       # 3
+#et          # 3
+#porque      # 2
+#mas         # 2
+#ainsi       # 1
+#und         # 1
+#más         # 1
+#cuanta      # 1
+#ú           # 1
+#qué         # 1
+#0           # 1
+#es          # 1

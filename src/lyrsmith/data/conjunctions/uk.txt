@@ -1,0 +1,48 @@
+# lang:     uk
+# treebank: UD_Ukrainian-IU  (uk_iu-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   92,927  total  |  3,722  CCONJ  |  33  unique
+# threshold: freq >= 18  (= max(2, 3722 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+і           # 1575
+та          # 674
+а           # 552
+але         # 240
+й           # 235
+або         # 158
+чи          # 112
+ні          # 26
+проте       # 23
+то          # 22
+
+# --- below threshold (freq < 18) — review before including ---
+#як          # 17
+#однак       # 13
+#так         # 12
+#натомість   # 11
+#ані         # 9
+#зате        # 9
+#одначе      # 6
+#хоч         # 5
+#хоча        # 4
+#айбо        # 3
+#тільки      # 2
+#лиш         # 2
+#абож        # 2
+#ба          # 1
+#плюс        # 1
+#да          # 1
+#утім        # 1
+#втім        # 1
+#+           # 1
+#чим         # 1
+#тим         # 1
+#причому     # 1
+#&           # 1

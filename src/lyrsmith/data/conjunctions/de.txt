@@ -1,0 +1,75 @@
+# lang:     de
+# treebank: UD_German-GSD  (de_gsd-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   263,777  total  |  7,948  CCONJ  |  60  unique
+# threshold: freq >= 39  (= max(2, 7948 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+und              # 6504
+oder             # 534
+sowie            # 242
+aber             # 158
+sondern          # 101
+als              # 97
+wie              # 54
+sowohl           # 48
+
+# --- below threshold (freq < 39) — review before including ---
+#and              # 34
+#doch             # 29
+#noch             # 14
+#denn             # 14
+#weder            # 13
+#entweder         # 12
+#jedoch           # 11
+#dass             # 8
+#et               # 6
+#nur              # 5
+#bzw              # 5
+#insbesondere     # 5
+#ob               # 4
+#wenn             # 3
+#beziehungsweise  # 3
+#auch             # 2
+#obwohl           # 2
+#allerdings       # 2
+#daß              # 2
+#dazu             # 2
+#u                # 2
+#je               # 2
+#sonden           # 1
+#unnd             # 1
+#od               # 1
+#ebenfalls        # 1
+#+                # 1
+#nämlich          # 1
+#so               # 1
+#trotzdem         # 1
+#jeweils          # 1
+#d.h.             # 1
+#daneben          # 1
+#nachdem          # 1
+#y                # 1
+#zurück           # 1
+#um               # 1
+#andererseits     # 1
+#damit            # 1
+#weil             # 1
+#i                # 1
+#an               # 1
+#dafür            # 1
+#ou               # 1
+#or               # 1
+#e                # 1
+#desto            # 1
+#uns              # 1
+#dennoch          # 1
+#ferner           # 1
+#un               # 1
+#och              # 1

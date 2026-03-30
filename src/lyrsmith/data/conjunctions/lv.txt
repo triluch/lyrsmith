@@ -1,0 +1,39 @@
+# lang:     lv
+# treebank: UD_Latvian-LVTB  (lv_lvtb-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   258,266  total  |  10,629  CCONJ  |  24  unique
+# threshold: freq >= 53  (= max(2, 10629 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+un          # 6876
+bet         # 1308
+vai         # 724
+gan         # 404
+taču        # 377
+arī         # 235
+ne          # 215
+tomēr       # 187
+nevis       # 94
+jeb         # 54
+
+# --- below threshold (freq < 53) — review before including ---
+#kā          # 46
+#tātad       # 38
+#toties      # 18
+#nedz        # 15
+#tā          # 9
+#līdz        # 6
+#turpretī    # 6
+#te          # 5
+#turpretim   # 4
+#ari         # 3
+#kamēr       # 2
+#uz          # 1
+#nevīs       # 1
+#tačuu       # 1

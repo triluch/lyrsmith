@@ -1,0 +1,46 @@
+# lang:     be
+# treebank: UD_Belarusian-HSE  (be_hse-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   273,181  total  |  7,923  CCONJ  |  31  unique
+# threshold: freq >= 39  (= max(2, 7923 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+і           # 5279
+а           # 1059
+але         # 614
+ды          # 257
+ці          # 257
+або         # 109
+й           # 58
+таксама     # 54
+ні          # 51
+аднак       # 48
+альбо       # 46
+
+# --- below threshold (freq < 39) — review before including ---
+#i           # 33
+#то          # 14
+#и           # 8
+#ані         # 8
+#прычым      # 7
+#дый         # 5
+#да          # 2
+#плюс        # 2
+#нібы        # 1
+#колькі      # 1
+#як          # 1
+#цi          # 1
+#толькі      # 1
+#в           # 1
+#затое       # 1
+#ілі         # 1
+#📙а          # 1
+#⚡️а         # 1
+#☝️і         # 1
+#☝️а         # 1

@@ -1,0 +1,30 @@
+# lang:     lt
+# treebank: UD_Lithuanian-ALKSNIS  (lt_alksnis-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   47,641  total  |  2,136  CCONJ  |  15  unique
+# threshold: freq >= 10  (= max(2, 2136 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+ir          # 1352
+ar          # 185
+o           # 165
+bei         # 135
+arba        # 100
+tačiau      # 83
+bet         # 76
+vis         # 13
+
+# --- below threshold (freq < 10) — review before including ---
+#kadangi     # 9
+#kuo         # 8
+#tai         # 6
+#tad         # 1
+#tik         # 1
+#juo         # 1
+#visgi       # 1

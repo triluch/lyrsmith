@@ -155,7 +155,7 @@ class ConfigModal(ModalScreen[Config | None]):
                         classes="field-input",
                     )
                 with Horizontal(classes="field-row"):
-                    yield Label("Max words/line [WIP] (0=off)", classes="field-label")
+                    yield Label("Max words/line (0=off)", classes="field-label")
                     yield Input(
                         value=str(cfg.whisper_max_words_per_line),
                         placeholder="0  (e.g. 10 to split long segments)",

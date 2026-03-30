@@ -1,0 +1,24 @@
+# lang:     gl
+# treebank: UD_Galician-CTG  (gl_ctg-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   79,327  total  |  2,432  CCONJ  |  9  unique
+# threshold: freq >= 12  (= max(2, 2432 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+e           # 1910
+ou          # 390
+pero        # 68
+nin         # 24
+senón       # 23
+mais        # 12
+
+# --- below threshold (freq < 12) — review before including ---
+#quer        # 2
+#et          # 2
+#como        # 1

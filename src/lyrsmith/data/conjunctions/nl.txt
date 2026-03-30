@@ -1,0 +1,39 @@
+# lang:     nl
+# treebank: UD_Dutch-Alpino  (nl_alpino-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   186,027  total  |  3,835  CCONJ  |  24  unique
+# threshold: freq >= 19  (= max(2, 3835 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+en               # 2869
+maar             # 482
+of               # 284
+want             # 99
+tot              # 21
+
+# --- below threshold (freq < 19) — review before including ---
+#doch             # 15
+#noch             # 12
+#a                # 11
+#alsmede          # 8
+#etc.             # 7
+#enz.             # 5
+#hetzij           # 4
+#resp.            # 3
+#e.d.             # 3
+#en/of            # 2
+#à                # 2
+#respectievelijk  # 1
+#ofte             # 1
+#ofwel            # 1
+#d.w.z.           # 1
+#m.a.w.           # 1
+#eerder           # 1
+#oftewel          # 1
+#een              # 1

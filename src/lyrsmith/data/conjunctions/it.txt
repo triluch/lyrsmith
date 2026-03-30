@@ -1,0 +1,52 @@
+# lang:     it
+# treebank: UD_Italian-ISDT  (it_isdt-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   276,014  total  |  7,554  CCONJ  |  37  unique
+# threshold: freq >= 37  (= max(2, 7554 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+e           # 5181
+o           # 1021
+ma          # 654
+ed          # 283
+cioè        # 57
+sia         # 53
+oppure      # 44
+
+# --- below threshold (freq < 37) — review before including ---
+#né          # 36
+#ovvero      # 34
+#che         # 28
+#nè          # 27
+#nonché      # 25
+#od          # 19
+#mentre      # 16
+#però        # 10
+#quindi      # 10
+#and         # 8
+#eppure      # 7
+#bensì       # 5
+#et          # 4
+#come        # 3
+#sebbene     # 3
+#infatti     # 3
+#così        # 3
+#e/o         # 3
+#ossia       # 3
+#benché      # 2
+#anziché     # 2
+#altrimenti  # 2
+#&           # 1
+#più         # 1
+#quanto      # 1
+#quando      # 1
+#difatti     # 1
+#tuttavia    # 1
+#y           # 1
+#se          # 1

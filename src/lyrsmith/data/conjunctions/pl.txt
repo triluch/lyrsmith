@@ -1,0 +1,48 @@
+# lang:     pl
+# treebank: UD_Polish-PDB  (pl_pdb-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   281,685  total  |  8,386  CCONJ  |  33  unique
+# threshold: freq >= 41  (= max(2, 8386 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+i            # 4951
+a            # 1097
+ale          # 754
+oraz         # 356
+lub          # 300
+czy          # 213
+albo         # 106
+ani          # 85
+lecz         # 80
+jednak       # 70
+natomiast    # 69
+jak          # 62
+tylko        # 44
+czyli        # 44
+
+# --- below threshold (freq < 41) — review before including ---
+#jednakże     # 28
+#tymczasem    # 27
+zaś           # 27
+#bądź         # 17
+#to           # 10
+#ile          # 9
+#co           # 9
+#tyle         # 6
+#i/lub        # 4
+#&            # 3
+#niemniej     # 3
+#inaczej      # 2
+#plus         # 2
+#+            # 2
+#and          # 2
+#ewentualnie  # 1
+#względnie    # 1
+#ni           # 1
+#et           # 1

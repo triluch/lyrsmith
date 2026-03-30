@@ -1,0 +1,54 @@
+# lang:     hu
+# treebank: UD_Hungarian-Szeged  (hu_szeged-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   20,166  total  |  925  CCONJ  |  39  unique
+# threshold: freq >= 4  (= max(2, 925 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+és             # 296
+is             # 208
+s              # 83
+de             # 69
+pedig          # 44
+azonban        # 19
+hanem          # 19
+hiszen         # 19
+vagy           # 16
+ám             # 13
+illetve        # 12
+valamint       # 10
+sem            # 10
+ugyanis        # 10
+sőt            # 10
+viszont        # 10
+meg            # 8
+ugyancsak      # 8
+tehát          # 6
+majd           # 6
+nemcsak        # 6
+így            # 6
+mind           # 6
+ezért          # 5
+szintén        # 4
+mégis          # 4
+azaz           # 4
+
+# --- below threshold (freq < 4) — review before including ---
+#mindazonáltal  # 2
+#márpedig       # 2
+#azért          # 1
+#se             # 1
+#illetőleg      # 1
+#aztán          # 1
+#mármint        # 1
+#ellenben       # 1
+#úgyhogy        # 1
+#egyszersmind   # 1
+#nemhogy        # 1
+#holott         # 1

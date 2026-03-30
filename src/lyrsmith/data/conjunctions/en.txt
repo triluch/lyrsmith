@@ -1,0 +1,36 @@
+# lang:     en
+# treebank: UD_English-EWT  (en_ewt-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   204,577  total  |  6,687  CCONJ  |  21  unique
+# threshold: freq >= 33  (= max(2, 6687 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+and         # 4990
+but         # 724
+or          # 715
+&           # 109
+both        # 51
+
+# --- below threshold (freq < 33) — review before including ---
+#either      # 29
+#yet         # 17
+#nor         # 16
+#plus        # 15
+#for         # 5
+#neither     # 3
+#an          # 3
+#n           # 2
+#minus       # 1
+#+           # 1
+#adn         # 1
+#a           # 1
+#at          # 1
+#of          # 1
+#ans         # 1
+#'n          # 1

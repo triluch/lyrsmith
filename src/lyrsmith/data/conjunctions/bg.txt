@@ -1,0 +1,40 @@
+# lang:     bg
+# treebank: UD_Bulgarian-BTB  (bg_btb-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   124,336  total  |  3,885  CCONJ  |  25  unique
+# threshold: freq >= 19  (= max(2, 3885 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+и           # 3062
+но          # 290
+а           # 223
+или         # 185
+нито        # 26
+
+# --- below threshold (freq < 19) — review before including ---
+#та          # 17
+#ни          # 13
+#ама         # 11
+#&           # 11
+#тоест       # 8
+#ала         # 7
+#па          # 5
+#хем         # 4
+#плюс        # 4
+#ами         # 3
+#било        # 3
+#че          # 2
+#ха          # 2
+#бре         # 2
+#+           # 2
+#/           # 1
+#обаче       # 1
+#сиреч       # 1
+#то          # 1
+#т.е.        # 1

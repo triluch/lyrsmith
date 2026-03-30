@@ -1,0 +1,35 @@
+# lang:     hr
+# treebank: UD_Croatian-SET  (hr_set-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   152,857  total  |  6,286  CCONJ  |  20  unique
+# threshold: freq >= 31  (= max(2, 6286 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+i           # 4131
+a           # 703
+te          # 349
+ili         # 329
+ali         # 301
+no          # 146
+nego        # 114
+pa          # 114
+ni          # 36
+
+# --- below threshold (freq < 31) — review before including ---
+#dakle       # 24
+#niti        # 21
+#već         # 5
+#bilo        # 4
+#stoga       # 2
+#što         # 2
+#samo        # 1
+#mada        # 1
+#pak         # 1
+#al          # 1
+#kako        # 1

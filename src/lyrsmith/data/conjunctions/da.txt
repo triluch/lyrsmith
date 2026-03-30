@@ -1,0 +1,23 @@
+# lang:     da
+# treebank: UD_Danish-DDT  (da_ddt-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   80,378  total  |  2,693  CCONJ  |  8  unique
+# threshold: freq >= 13  (= max(2, 2693 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+og          # 2022
+men         # 424
+eller       # 160
+for         # 46
+samt        # 23
+
+# --- below threshold (freq < 13) — review before including ---
+#&           # 11
+#jamen       # 6
+#åååårrr     # 1

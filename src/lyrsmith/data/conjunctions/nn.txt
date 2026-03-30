@@ -1,0 +1,35 @@
+# lang:     nn
+# treebank: UD_Norwegian-Nynorsk  (no_nynorsk-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   245,330  total  |  9,135  CCONJ  |  20  unique
+# threshold: freq >= 45  (= max(2, 9135 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+og          # 6763
+men         # 1389
+eller       # 463
+både        # 271
+så          # 93
+for         # 78
+
+# --- below threshold (freq < 45) — review before including ---
+#anten       # 29
+#korkje      # 14
+#verken      # 13
+#&           # 4
+#samt        # 4
+#å           # 3
+#enten       # 3
+#òg          # 2
+#o.          # 1
+#el.         # 1
+#go          # 1
+#samd        # 1
+#pluss       # 1
+#et          # 1

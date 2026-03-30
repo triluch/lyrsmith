@@ -1,0 +1,31 @@
+# lang:     nb
+# treebank: UD_Norwegian-Bokmaal  (no_bokmaal-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   243,886  total  |  8,474  CCONJ  |  16  unique
+# threshold: freq >= 42  (= max(2, 8474 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+og          # 6269
+men         # 1269
+eller       # 448
+både        # 242
+for         # 75
+så          # 67
+
+# --- below threshold (freq < 42) — review before including ---
+#enten       # 28
+#samt        # 24
+#hverken     # 20
+#verken      # 13
+#&           # 9
+#pluss       # 4
+#å           # 3
+#and         # 1
+#med         # 1
+#elle        # 1

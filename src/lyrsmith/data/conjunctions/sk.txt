@@ -1,0 +1,46 @@
+# lang:     sk
+# treebank: UD_Slovak-SNK  (sk_snk-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   80,874  total  |  2,534  CCONJ  |  31  unique
+# threshold: freq >= 12  (= max(2, 2534 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+a           # 1840
+ale         # 174
+i           # 71
+ani         # 59
+aj          # 56
+alebo       # 51
+či          # 44
+no          # 40
+lebo        # 39
+však        # 37
+tak         # 21
+len         # 19
+lenže       # 13
+teda        # 12
+
+# --- below threshold (freq < 12) — review before including ---
+#takže       # 9
+#síce        # 9
+#zato        # 6
+#jednak      # 5
+#preto       # 4
+#pričom      # 4
+#čiže        # 3
+#avšak       # 3
+#buď         # 3
+#veď         # 2
+#nielen      # 2
+#predsa      # 2
+#ba          # 2
+#sice        # 1
+#pritom      # 1
+#prv         # 1
+#to          # 1

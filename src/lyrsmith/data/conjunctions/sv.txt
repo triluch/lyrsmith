@@ -1,0 +1,36 @@
+# lang:     sv
+# treebank: UD_Swedish-Talbanken  (sv_talbanken-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   66,646  total  |  2,433  CCONJ  |  21  unique
+# threshold: freq >= 12  (= max(2, 2433 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+och         # 1689
+eller       # 323
+men         # 235
+utan        # 47
+både        # 44
+dels        # 15
+
+# --- below threshold (freq < 12) — review before including ---
+#varken      # 11
+#såväl       # 10
+#som         # 10
+#ju          # 8
+#samt        # 7
+#antingen    # 5
+#vare        # 5
+#ty          # 5
+#såsom       # 4
+#för         # 4
+#el          # 4
+#så          # 2
+#and         # 2
+#ömsom       # 2
+#+           # 1

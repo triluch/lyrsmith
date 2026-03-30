@@ -1,0 +1,30 @@
+# lang:     ro
+# treebank: UD_Romanian-RRT  (ro_rrt-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   185,125  total  |  5,940  CCONJ  |  15  unique
+# threshold: freq >= 29  (= max(2, 5940 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+și          # 4531
+sau         # 829
+dar         # 311
+însă        # 100
+ci          # 41
+și-         # 36
+ori         # 29
+
+# --- below threshold (freq < 29) — review before including ---
+#fie         # 27
+#deci        # 20
+#căci        # 10
+#da'         # 2
+#ș-          # 1
+#insă        # 1
+#şi          # 1
+#or          # 1

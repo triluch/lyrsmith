@@ -1,0 +1,41 @@
+# lang:     sl
+# treebank: UD_Slovenian-SSJ  (sl_ssj-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   215,155  total  |  8,960  CCONJ  |  26  unique
+# threshold: freq >= 44  (= max(2, 8960 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+in          # 4908
+pa          # 1642
+ali         # 560
+saj         # 253
+ter         # 231
+vendar      # 228
+zato        # 165
+a           # 162
+namreč      # 121
+oziroma     # 112
+toda        # 111
+tako        # 98
+ampak       # 85
+temveč      # 45
+
+# --- below threshold (freq < 44) — review before including ---
+#ne          # 38
+#sicer       # 36
+#kajti       # 35
+#vendarle    # 34
+#torej       # 33
+#niti        # 28
+#bodisi      # 10
+#razen       # 8
+#sej         # 6
+#marveč      # 5
+#al          # 5
+#takó        # 1

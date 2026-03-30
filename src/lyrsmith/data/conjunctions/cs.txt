@@ -1,0 +1,46 @@
+# lang:     cs
+# treebank: UD_Czech-FicTree  (cs_fictree-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   133,637  total  |  6,171  CCONJ  |  31  unique
+# threshold: freq >= 30  (= max(2, 6171 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+a           # 4509
+ale         # 699
+i           # 299
+nebo        # 127
+tak         # 97
+jenže       # 68
+však        # 67
+ani         # 63
+proto       # 46
+neboť       # 30
+
+# --- below threshold (freq < 30) — review before including ---
+#jenomže     # 27
+#sice        # 25
+#či          # 21
+#vždyť       # 15
+#anebo       # 14
+#jednak      # 10
+#tedy        # 10
+#nýbrž       # 8
+#až          # 6
+#buď         # 5
+#ovšem       # 4
+#jak         # 3
+#přesto      # 3
+#kdežto      # 3
+#avšak       # 3
+#tudíž       # 2
+#přece       # 2
+#totiž       # 2
+#buďto       # 1
+#nicméně     # 1
+#leč         # 1

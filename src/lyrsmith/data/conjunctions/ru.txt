@@ -1,0 +1,34 @@
+# lang:     ru
+# treebank: UD_Russian-GSD  (ru_gsd-ud-train.conllu)
+# fetched:  2026-03-30
+# tokens:   74,900  total  |  2,360  CCONJ  |  19  unique
+# threshold: freq >= 11  (= max(2, 2360 // 200))
+#
+# HOW TO REVIEW:
+#   - Lines starting with # are ignored by the loader.
+#   - Delete a line to exclude a word.
+#   - Uncomment a pre-commented line to include it.
+#   - Add a plain line to include a word not found in the source.
+#   - Frequency counts are shown for context only.
+
+и           # 1724
+а           # 209
+но          # 125
+или         # 110
+также       # 79
+однако      # 56
+либо        # 15
+так         # 11
+
+# --- below threshold (freq < 11) — review before including ---
+#как         # 8
+#то          # 6
+#ни          # 6
+#причём      # 3
+#не          # 2
+#такъжо      # 1
+#зато        # 1
+#по          # 1
+#только      # 1
+#хотя        # 1
+#да          # 1

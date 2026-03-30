@@ -9,7 +9,6 @@ the loaded model and re-loads only when model/device changes.
 from __future__ import annotations
 
 import logging
-import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -17,6 +16,7 @@ from typing import Callable
 from faster_whisper import WhisperModel
 
 from ..lrc import LRCLine, WordTiming
+from .splitter import best_split_index
 
 # Silence noisy loggers from HuggingFace / ctranslate2 that would
 # otherwise leak through to the terminal and corrupt the TUI.
@@ -54,68 +54,45 @@ class _SegmentLike:
     words: list = field(default_factory=list)  # faster-whisper Word objects
 
 
-def _split_segment(seg: _SegmentLike, max_words: int) -> list[_SegmentLike]:
-    """Recursively split *seg* at the largest inter-word pause gap.
+def _split_segment(seg: _SegmentLike, max_words: int, lang: str = "") -> list[_SegmentLike]:
+    """Recursively split *seg* at the most natural phrase boundary.
 
     Returns a list of one or more sub-segments each containing at most
     *max_words* words.  When *max_words* is 0, or the segment is already
     within the limit, or the segment has fewer than 2 words, returns
     ``[seg]`` unchanged.
 
-    The split point is chosen by scoring each candidate position as
-    ``sqrt(gap) × min(i, n-i)²``.  The square-root compresses gap outliers
-    (Whisper's imprecise edge-word timing cannot dominate just by reporting an
-    unusually large value), while the quadratic position weight strongly favours
-    the centre: edge positions score 1, the centre scores up to ``(n//2)²``.
+    The split point is chosen by best_split_index() in splitter.py:
+    inter-word gaps and conjunction positions are used as candidates, scored
+    by syllable balance.  Falls back to pure syllable balance when no
+    gap/conjunction candidates exist.
     """
     if max_words <= 0 or not seg.words or len(seg.words) <= max_words:
         return [seg]
     if len(seg.words) < 2:
         return [seg]
 
-    n = len(seg.words)
-    # Score: sqrt(gap) × min(i, n-i)²
-    #
-    # Two complementary mechanisms:
-    #   sqrt(gap)        — compresses outliers so a 4× gap advantage becomes 2×,
-    #                      reducing Whisper's imprecise edge-word timing from
-    #                      dominating just because it reported a large gap there.
-    #   min(i, n-i)²     — quadratic position weight; edge positions score 1,
-    #                      the centre scores (n//2)².  For n=11 the centre gets
-    #                      25× the edge weight.
-    #
-    # Together: a 2 s edge outlier scores sqrt(2)×1 ≈ 1.41 while a 0.3 s
-    # phrase gap at the centre scores sqrt(0.3)×25 ≈ 13.7 — centre wins by 10×.
-    # A genuinely extreme edge pause (e.g. silence between verses) can still
-    # win, but typical Whisper timing noise at word boundaries cannot.
-    best_score = -1.0
-    best_idx = n // 2  # fallback: geometric midpoint
-    for i in range(1, n):
-        gap = max(seg.words[i].start - seg.words[i - 1].end, 0.0)
-        w = min(i, n - i)
-        score = math.sqrt(gap) * w * w
-        if score > best_score:
-            best_score = score
-            best_idx = i
+    split_i = best_split_index(seg.words, lang)
+    first_words = seg.words[: split_i + 1]
+    second_words = seg.words[split_i + 1 :]
 
-    first_words = seg.words[:best_idx]
-    second_words = seg.words[best_idx:]
+    def _cap(t: str) -> str:
+        return t[:1].upper() + t[1:]
 
     first = _SegmentLike(
         start=seg.start,
         end=first_words[-1].end,
-        text="".join(w.word for w in first_words).strip(),
+        text=_cap("".join(w.word for w in first_words).strip()),
         words=first_words,
     )
     second = _SegmentLike(
         start=second_words[0].start,
         end=seg.end,
-        text="".join(w.word for w in second_words).strip(),
+        text=_cap("".join(w.word for w in second_words).strip()),
         words=second_words,
     )
 
-    # Recurse so that each half is also split if still over the limit.
-    return _split_segment(first, max_words) + _split_segment(second, max_words)
+    return _split_segment(first, max_words, lang) + _split_segment(second, max_words, lang)
 
 
 # ---------------------------------------------------------------------------
@@ -185,11 +162,12 @@ class Transcriber:
             on_progress(f"Transcribing {path.name}…")
 
         lang = None if (language is None or language == "auto") else language
-        raw_segments, _info = self._model.transcribe(
+        raw_segments, info = self._model.transcribe(
             str(path),
             language=lang,
             word_timestamps=True,
         )
+        detected_lang: str = info.language if isinstance(info.language, str) else ""
 
         # Materialise the lazy iterator, wrap each segment in _SegmentLike,
         # then apply the word-count splitter before any further processing.
@@ -201,7 +179,7 @@ class Transcriber:
                 text=seg.text,
                 words=list(seg.words or []),
             )
-            segs.extend(_split_segment(wrapped, max_words_per_line))
+            segs.extend(_split_segment(wrapped, max_words_per_line, detected_lang))
 
         lines: list[LRCLine] = []
         for seg in segs:
