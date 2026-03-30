@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -107,6 +108,42 @@ class TestLoadModel:
         assert kwargs["compute_type"] == "float16"
         assert kwargs["cpu_threads"] == 4
         assert kwargs["num_workers"] == 2
+
+    def test_ctranslate2_log_level_raised_to_error_during_load(self):
+        """C++ log level is raised to ERROR around WhisperModel() to suppress
+        the benign float16-on-CPU warning, then restored afterwards."""
+        t = Transcriber()
+        with (
+            patch(_PATCH),
+            patch(
+                "lyrsmith.transcribe.whisper.ctranslate2.get_log_level",
+                return_value=logging.WARNING,
+            ),
+            patch("lyrsmith.transcribe.whisper.ctranslate2.set_log_level") as mock_set,
+        ):
+            t.load_model("base")
+        assert mock_set.call_args_list == [
+            call(logging.ERROR),  # suppress
+            call(logging.WARNING),  # restore
+        ]
+
+    def test_ctranslate2_log_level_restored_on_load_failure(self):
+        """Log level is restored even if WhisperModel() raises."""
+        t = Transcriber()
+        with (
+            patch(_PATCH, side_effect=RuntimeError("oops")),
+            patch(
+                "lyrsmith.transcribe.whisper.ctranslate2.get_log_level",
+                return_value=logging.WARNING,
+            ),
+            patch("lyrsmith.transcribe.whisper.ctranslate2.set_log_level") as mock_set,
+        ):
+            with pytest.raises(RuntimeError):
+                t.load_model("base")
+        assert mock_set.call_args_list == [
+            call(logging.ERROR),
+            call(logging.WARNING),
+        ]
 
 
 class TestTranscribe:

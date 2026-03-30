@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+import ctranslate2
 from faster_whisper import WhisperModel
 
 from ..lrc import LRCLine, WordTiming
@@ -128,14 +129,23 @@ class Transcriber:
         if on_progress:
             on_progress("Loading model…")
 
-        # faster-whisper downloads to ~/.cache/huggingface if not present.
-        self._model = WhisperModel(
-            name,
-            device=device,
-            compute_type=compute_type,
-            cpu_threads=cpu_threads,
-            num_workers=num_workers,
-        )
+        # Suppress the benign ctranslate2 C++ warning about falling back from
+        # float16 to float32 on CPU — it goes to the C++ logger (not Python's
+        # logging module) and would otherwise bleed into the terminal.
+        # Raise the C++ log level to ERROR for the duration of the load only.
+        _prev_level = ctranslate2.get_log_level()
+        ctranslate2.set_log_level(logging.ERROR)
+        try:
+            # faster-whisper downloads to ~/.cache/huggingface if not present.
+            self._model = WhisperModel(
+                name,
+                device=device,
+                compute_type=compute_type,
+                cpu_threads=cpu_threads,
+                num_workers=num_workers,
+            )
+        finally:
+            ctranslate2.set_log_level(_prev_level)
         self._model_key = new_key
 
         if on_progress:
