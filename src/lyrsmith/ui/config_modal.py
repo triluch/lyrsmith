@@ -12,6 +12,42 @@ from ..config import Config
 from ..keybinds import KB_CONFIG, KB_HELP
 from .bottom_bar import fmt_key
 
+_FIELD_DESCRIPTIONS: dict[str, str] = {
+    "f-whisper-model": (
+        "Whisper model size. Larger models are more accurate but slower and need more RAM.\n"
+        "Options: tiny, base, small, medium, large-v2, large-v3"
+    ),
+    "f-compute-type": (
+        "Quantisation type for the model weights.\n"
+        "default lets faster-whisper choose. int8 is fastest on CPU; float16 requires a GPU."
+    ),
+    "f-whisper-language": (
+        "Default transcription language. Use 'auto' to let Whisper detect it.\n"
+        "Examples: en, pl, de, fr, ja"
+    ),
+    "f-whisper-languages": (
+        "Comma-separated list of languages to cycle through with the language toggle.\n"
+        "Example: auto, en, pl, de"
+    ),
+    "f-device": (
+        "Hardware device for transcription. cpu works everywhere; cuda for NVIDIA GPUs;\n"
+        "hip for AMD GPUs (ROCm)."
+    ),
+    "f-intra-threads": (
+        "Threads used within a single operation (0 = auto-detect).\n"
+        "Increase on multi-core CPUs to speed up inference."
+    ),
+    "f-inter-threads": "Number of parallel model sessions. Default 1; rarely needs changing.",
+    "f-max-words-per-line": (
+        "Split transcribed segments that exceed this many words (0 = disabled).\n"
+        "Splits favour natural phrase boundaries using syllable balance and conjunctions."
+    ),
+    "f-waveform-zoom": (
+        "Visible waveform window in seconds centred on the playhead.\n"
+        "Smaller values zoom in; larger values show more context."
+    ),
+}
+
 
 class ConfigModal(ModalScreen[Config | None]):
     """Edit config. Ctrl+S to save, Esc / F1 / F2 to cancel."""
@@ -21,9 +57,8 @@ class ConfigModal(ModalScreen[Config | None]):
         align: center middle;
     }
     ConfigModal #outer {
-        width: 72;
+        width: 84;
         max-height: 90%;
-        border: solid $accent;
         background: $surface;
     }
     ConfigModal #title-bar {
@@ -49,7 +84,7 @@ class ConfigModal(ModalScreen[Config | None]):
         color: $error;
     }
     ConfigModal VerticalScroll {
-        padding: 0 2 1 2;
+        padding: 0 4 1 4;
     }
     ConfigModal .section-header {
         color: #87ceeb;
@@ -57,7 +92,8 @@ class ConfigModal(ModalScreen[Config | None]):
         margin-top: 1;
     }
     ConfigModal .field-row {
-        height: 3;
+        height: 1;
+        margin-bottom: 1;
     }
     ConfigModal .field-label {
         width: 26;
@@ -66,6 +102,21 @@ class ConfigModal(ModalScreen[Config | None]):
     }
     ConfigModal .field-input {
         width: 1fr;
+        height: 1;
+        border: none;
+        background: $boost;
+        padding: 0 1;
+    }
+    ConfigModal .field-input:focus {
+        border: none;
+        background: $primary-background;
+    }
+    ConfigModal #help-area {
+        height: 4;
+        width: 1fr;
+        background: $panel;
+        color: $text-muted;
+        padding: 1 4;
     }
     """
 
@@ -174,8 +225,16 @@ class ConfigModal(ModalScreen[Config | None]):
                         classes="field-input",
                     )
 
+            yield Label("", id="help-area")
+
     def on_mount(self) -> None:
         self.query_one("#f-whisper-model", Input).focus()
+        self.query_one("#help-area", Label).update(_FIELD_DESCRIPTIONS.get("f-whisper-model", ""))
+        self.watch(self, "focused", self._on_focused_change)
+
+    def _on_focused_change(self, focused: object) -> None:
+        if isinstance(focused, Input) and focused.id in _FIELD_DESCRIPTIONS:
+            self.query_one("#help-area", Label).update(_FIELD_DESCRIPTIONS[focused.id])
 
     # ------------------------------------------------------------------
     # Helpers

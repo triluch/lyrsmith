@@ -1463,6 +1463,81 @@ class TestConfigModal:
 
         asyncio.run(_impl())
 
+    def test_help_area_populated_on_open(self, make_app):
+        """Help area shows the first field's description immediately on open."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                await pilot.pause()
+                app.action_show_config()
+                await pilot.pause()
+                assert isinstance(app.screen, ConfigModal)
+                help_text = str(app.screen.query_one("#help-area", Label).content)
+                # First focused field is f-whisper-model
+                assert "model size" in help_text.lower()
+                await pilot.press("escape")
+                await pilot.pause()
+
+        asyncio.run(_impl())
+
+    def test_tab_updates_help_text(self, make_app):
+        """Tabbing to the next field updates the help area with that field's description."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                await pilot.pause()
+                app.action_show_config()
+                await pilot.pause()
+                assert isinstance(app.screen, ConfigModal)
+                modal = app.screen
+
+                first_help = str(modal.query_one("#help-area", Label).content)
+                await pilot.press("tab")
+                await pilot.pause()
+                second_help = str(modal.query_one("#help-area", Label).content)
+
+                assert first_help != second_help
+                # Second field is f-compute-type
+                assert "quantis" in second_help.lower()
+                await pilot.press("escape")
+                await pilot.pause()
+
+        asyncio.run(_impl())
+
+    def test_each_field_shows_its_own_description(self, make_app):
+        """Directly focusing each input shows its own unique help description."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import Input as _Input
+
+                from lyrsmith.ui.config_modal import _FIELD_DESCRIPTIONS
+
+                app = pilot.app
+                await pilot.pause()
+                app.action_show_config()
+                await pilot.pause()
+                assert isinstance(app.screen, ConfigModal)
+                modal = app.screen
+
+                for field_id, expected_desc in _FIELD_DESCRIPTIONS.items():
+                    modal.query_one(f"#{field_id}", _Input).focus()
+                    await pilot.pause()
+                    help_text = str(modal.query_one("#help-area", Label).content)
+                    assert help_text == expected_desc, (
+                        f"{field_id}: expected {expected_desc!r}, got {help_text!r}"
+                    )
+
+                await pilot.press("escape")
+                await pilot.pause()
+
+        asyncio.run(_impl())
+
 
 # ---------------------------------------------------------------------------
 # TestWaveformPane
