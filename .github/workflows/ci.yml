@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -28,9 +29,21 @@ jobs:
       - run: uv sync
       - run: uv run pytest -m "not slow" -q
 
+  test-macos:
+    name: Tests (fast, macOS)
+    if: github.event_name == 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: brew install mpv
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest -m "not slow" -q
+
   test-full:
     name: Tests (full, incl. slow)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,5 +55,22 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: hf-whisper-tiny
+      - run: uv sync
+      - run: uv run pytest -q
+
+  test-full-macos:
+    name: Tests (full, incl. slow, macOS)
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: brew install mpv
+      - uses: astral-sh/setup-uv@v5
+      - name: Cache Hugging Face models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-whisper-tiny-macos
       - run: uv sync
       - run: uv run pytest -q
