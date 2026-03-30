@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
+from rich.style import Style
+from rich.text import Text as RichText
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.reactive import reactive
@@ -10,6 +14,13 @@ from textual.widgets import Label
 
 from ..keybinds import KB_CONFIG, KB_HELP
 from .bottom_bar import fmt_key
+
+# Width of the #status label content area (widget width 24 − padding 0 1 × 2)
+_STATUS_CONTENT_W = 22
+# Background style for the filled (progress) portion
+_FILL_STYLE = Style(bgcolor="rgb(0,75,120)")
+# Matches "42%" anywhere in a status string
+_PCT_RE = re.compile(r"(\d+)%")
 
 
 class TopBar(Widget):
@@ -76,7 +87,19 @@ class TopBar(Widget):
         self.query_one("#song-title", Label).update(value)
 
     def watch_status(self, value: str) -> None:
-        self.query_one("#status", Label).update(value)
+        lbl = self.query_one("#status", Label)
+        m = _PCT_RE.search(value) if "Transcribing" in value else None
+        if m:
+            pct = min(100, int(m.group(1)))
+            filled = int(_STATUS_CONTENT_W * pct / 100)
+            padded = value.ljust(_STATUS_CONTENT_W)[:_STATUS_CONTENT_W]
+            t = RichText(no_wrap=True, overflow="crop")
+            if filled:
+                t.append(padded[:filled], style=_FILL_STYLE)
+            t.append(padded[filled:])
+            lbl.update(t)
+        else:
+            lbl.update(value)
 
     def watch_model_name(self, value: str) -> None:
         self.query_one("#model-label", Label).update(f" model:{value}")
