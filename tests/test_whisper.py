@@ -266,6 +266,22 @@ class TestTranscribe:
         assert result[1].text == "C d"
         assert result[1].timestamp == pytest.approx(1.0)  # word-precise
 
+    def test_on_language_detected_callback_fires_with_detected_language(self):
+        """on_language_detected is called once with the language from TranscriptionInfo."""
+        t, mock_model = self._transcriber_with_mock_model()
+        info = MagicMock()
+        info.language = "fr"
+        mock_model.transcribe.return_value = ([], info)
+        received: list[str] = []
+        t.transcribe(Path("test.mp3"), on_language_detected=received.append)
+        assert received == ["fr"]
+
+    def test_on_language_detected_not_required(self):
+        """Omitting on_language_detected must not raise."""
+        t, mock_model = self._transcriber_with_mock_model()
+        mock_model.transcribe.return_value = ([], MagicMock())
+        t.transcribe(Path("test.mp3"))  # no on_language_detected arg
+
 
 class TestSplitSegment:
     """Unit tests for the _split_segment post-processor."""

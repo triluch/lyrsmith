@@ -408,6 +408,10 @@ class LyrsmithApp(App):
         language = self._config.whisper_language
         max_words = self._config.whisper_max_words_per_line
 
+        def _on_lang_detected(lang: str) -> None:
+            if language in ("auto", None) and lang:
+                self.call_from_thread(self._w_top.set_language, f"auto ({lang})")
+
         try:
             # Load model (no-op when name and all hardware params are unchanged)
             await loop.run_in_executor(
@@ -430,6 +434,7 @@ class LyrsmithApp(App):
                     language=language,
                     on_progress=_progress,
                     max_words_per_line=max_words,
+                    on_language_detected=_on_lang_detected,
                 ),
             )
         except Exception as e:

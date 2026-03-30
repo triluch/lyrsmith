@@ -30,11 +30,18 @@ _AUDIO_FIXTURES = [
 
 
 @pytest.fixture(scope="module", params=_AUDIO_FIXTURES)
-def transcribed_lines(request):
-    """Load tiny model and transcribe the parametrized fixture file once."""
+def transcription_result(request):
+    """Load tiny model and transcribe once; returns (lines, detected_lang)."""
     t = Transcriber()
     t.load_model("tiny")
-    return t.transcribe(request.param)
+    detected: list[str] = []
+    lines = t.transcribe(request.param, on_language_detected=detected.append)
+    return lines, detected[0] if detected else ""
+
+
+@pytest.fixture(scope="module")
+def transcribed_lines(transcription_result):
+    return transcription_result[0]
 
 
 @pytest.mark.slow
@@ -68,3 +75,7 @@ class TestE2ETranscription:
         assert all(line.end is not None for line in transcribed_lines), (
             "Some transcribed lines are missing end timestamps"
         )
+
+    def test_detects_english_language(self, transcription_result):
+        _, detected_lang = transcription_result
+        assert detected_lang == "en"

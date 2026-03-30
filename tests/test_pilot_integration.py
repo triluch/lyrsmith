@@ -36,6 +36,7 @@ from lyrsmith.ui.config_modal import ConfigModal
 from lyrsmith.ui.edit_line_modal import EditLineModal
 from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
+from lyrsmith.ui.top_bar import TopBar
 from lyrsmith.ui.unsaved_modal import UnsavedModal
 from lyrsmith.ui.waveform_pane import VOL_MAX, ZOOM_MIN, WaveformPane
 
@@ -1788,6 +1789,75 @@ class TestTranscription:
                     "See you later",
                 ]
                 ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_auto_language_updates_top_bar_after_transcription(
+        self, make_app, monkeypatch, tmp_path
+    ):
+        """When language is 'auto', the top bar shows 'auto (LANG)' after transcription."""
+        from lyrsmith.transcribe.whisper import transcriber as _tr
+
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "vocal.mp3")
+        stub_lines = [LRCLine(1.0, "Hello")]
+
+        def _stub_transcribe(*a, **kw):
+            cb = kw.get("on_language_detected")
+            if cb:
+                cb("en")
+            return stub_lines
+
+        monkeypatch.setattr(_tr, "transcribe", _stub_transcribe)
+        monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
+
+        async def _impl():
+            async with _factory(config=Config(whisper_language="auto")).run_test(
+                headless=True
+            ) as pilot:
+                app = pilot.app
+                app._loaded_path = audio
+                await pilot.pause()
+                app.action_transcribe()
+                await pilot.app.workers.wait_for_complete()
+                await pilot.pause()
+                assert app.query_one(TopBar).language == "auto (en)"
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_explicit_language_does_not_change_top_bar_label(
+        self, make_app, monkeypatch, tmp_path
+    ):
+        """When language is explicit (not 'auto'), the top bar keeps showing that language."""
+        from lyrsmith.transcribe.whisper import transcriber as _tr
+
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "vocal.mp3")
+        stub_lines = [LRCLine(1.0, "Witaj")]
+
+        def _stub_transcribe(*a, **kw):
+            cb = kw.get("on_language_detected")
+            if cb:
+                cb("pl")
+            return stub_lines
+
+        monkeypatch.setattr(_tr, "transcribe", _stub_transcribe)
+        monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
+
+        async def _impl():
+            async with _factory(config=Config(whisper_language="pl")).run_test(
+                headless=True
+            ) as pilot:
+                app = pilot.app
+                app._loaded_path = audio
+                await pilot.pause()
+                app.action_transcribe()
+                await pilot.app.workers.wait_for_complete()
+                await pilot.pause()
+                # Should remain "pl", not "pl (pl)" or anything else
+                assert app.query_one(TopBar).language == "pl"
                 await pilot.press("ctrl+q")
 
         asyncio.run(_impl())

@@ -147,6 +147,7 @@ class Transcriber:
         language: str | None = None,
         on_progress: Callable[[str], None] | None = None,
         max_words_per_line: int = 0,
+        on_language_detected: Callable[[str], None] | None = None,
     ) -> list[LRCLine]:
         """Transcribe *path* and return one LRCLine per (post-processed) segment.
 
@@ -168,6 +169,8 @@ class Transcriber:
             word_timestamps=True,
         )
         detected_lang: str = info.language if isinstance(info.language, str) else ""
+        if on_language_detected:
+            on_language_detected(detected_lang)
 
         # Materialise the lazy iterator, wrap each segment in _SegmentLike,
         # then apply the word-count splitter before any further processing.
