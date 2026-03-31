@@ -1,4 +1,4 @@
-"""Smoke test: verify the app mounts cleanly using Textual's headless Pilot."""
+"""Smoke tests: app mounts cleanly, core widgets present, modals open/close."""
 
 from __future__ import annotations
 
@@ -47,8 +47,6 @@ def test_app_mounts_and_core_widgets_present(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """App starts without crashing and all primary widgets are queryable."""
-    # Redirect config I/O to tmp_path so the test never touches the real
-    # ~/.config/lyrsmith/config.yaml (ctrl+q calls save_config).
     monkeypatch.setattr(config_module, "_CONFIG_DIR", tmp_path)
     monkeypatch.setattr(config_module, "_CONFIG_FILE", tmp_path / "config.yaml")
 
@@ -59,9 +57,7 @@ def test_app_mounts_and_core_widgets_present(
             assert app.query_one(BottomBar) is not None
             assert app.query_one(LyricsEditor) is not None
             assert app.query_one(WaveformPane) is not None
-            # LyricsEditor starts in empty/placeholder mode (no file loaded)
             assert app.query_one(LyricsEditor).mode == "empty"
-            # Clean quit — terminates mpv and calls save_config (now redirected)
             await pilot.press("ctrl+q")
 
     asyncio.run(_run())
@@ -75,19 +71,13 @@ def test_help_modal_opens_and_closes(tmp_path: Path, monkeypatch: pytest.MonkeyP
     async def _run() -> None:
         app = LyrsmithApp(initial_dir=tmp_path, config=Config())
         async with app.run_test(headless=True) as pilot:
-            # Modal not visible at start
             assert len(app.query(HelpModal)) == 0
-
-            # Open via action (F1 in real use); push_screen makes it the top screen
             app.action_show_help()
             await pilot.pause()
             assert isinstance(app.screen, HelpModal)
-
-            # Close with Escape — base screen should be back on top
             await pilot.press("escape")
             await pilot.pause()
             assert not isinstance(app.screen, HelpModal)
-
             await pilot.press("ctrl+q")
 
     asyncio.run(_run())
