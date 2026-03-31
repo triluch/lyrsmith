@@ -226,6 +226,9 @@ class LyricsEditor(Widget):
     class PlayPauseRequested(Message):
         """Editor wants playback toggled."""
 
+    class LinesChanged(Message):
+        """Emitted after any LRC mutation (stamp, nudge, delete, insert, merge, split, undo)."""
+
     # ------------------------------------------------------------------
 
     def __init__(self) -> None:
@@ -515,6 +518,7 @@ class LyricsEditor(Widget):
                 )
                 self._mark_dirty()
                 self._refresh_active_style()
+                self._set_cursor(self._cursor_idx)
 
         elif key == KB_UNDO:
             event.stop()
@@ -548,6 +552,7 @@ class LyricsEditor(Widget):
         self._lines, self._cursor_idx = _op_nudge(self._lines, idx, delta)
         self._mark_dirty()
         self._refresh_active_style()
+        self._set_cursor(self._cursor_idx)
 
     def _delete(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
@@ -671,3 +676,5 @@ class LyricsEditor(Widget):
 
     def _mark_dirty(self) -> None:
         self._is_dirty = True
+        if self._mode == "lrc":
+            self.post_message(self.LinesChanged())

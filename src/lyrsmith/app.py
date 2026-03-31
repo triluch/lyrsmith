@@ -126,7 +126,7 @@ class LyrsmithApp(App):
         max-width: 42;
     }
     WaveformPane {
-        width: 14;
+        width: 22;
     }
     LyricsEditor {
         width: 1fr;
@@ -141,7 +141,7 @@ class LyrsmithApp(App):
         background: $panel;
     }
     .ind-left  { width: 25%; min-width: 22; max-width: 42; }
-    .ind-wave  { width: 14; }
+    .ind-wave  { width: 22; }
     .ind-edit  { width: 1fr; }
 
     /* Move toasts to top-right instead of the default bottom-right. */
@@ -293,6 +293,7 @@ class LyrsmithApp(App):
             # Plain text for existing plain lyrics or empty string for no lyrics —
             # always gives an editable area, never a dead hint screen.
             self._w_editor.load_plain(lyrics_text or "")
+        self._sync_waveform_timestamps()
 
         # Save last directory
         self._config.last_directory = str(path.parent)
@@ -368,6 +369,7 @@ class LyrsmithApp(App):
                 self._w_editor.load_lines(meta, lrc_lines)
             else:
                 self._w_editor.load_plain(lyrics_text)
+        self._sync_waveform_timestamps()
         self._w_top.set_status("Reloaded")
 
     def action_transcribe(self) -> None:
@@ -525,6 +527,7 @@ class LyrsmithApp(App):
 
         self._w_editor.load_lines({}, lines)
         self._w_editor.mark_dirty()
+        self._sync_waveform_timestamps()
         self._w_top.set_status("Transcribed (unsaved)")
 
     # ------------------------------------------------------------------
@@ -595,6 +598,14 @@ class LyrsmithApp(App):
             self._w_bar.set_context("empty")
 
     # ------------------------------------------------------------------
+    # LRC timestamps → waveform markers
+    # ------------------------------------------------------------------
+
+    def _sync_waveform_timestamps(self) -> None:
+        """Push current LRC line timestamps to the waveform for marker display."""
+        self._w_waveform.set_lrc_timestamps([line.timestamp for line in self._w_editor.lrc_lines])
+
+    # ------------------------------------------------------------------
     # Waveform seek → sync player
     # ------------------------------------------------------------------
 
@@ -610,6 +621,9 @@ class LyrsmithApp(App):
     ) -> None:
         self._player.pause()
         self._w_editor.set_playing(False)
+
+    def on_lyrics_editor_lines_changed(self, _event: LyricsEditor.LinesChanged) -> None:
+        self._sync_waveform_timestamps()
 
     def on_lyrics_editor_play_pause_requested(
         self, _event: LyricsEditor.PlayPauseRequested

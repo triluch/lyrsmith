@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from lyrsmith.audio.waveform import (
+    _LRC_MARK_STYLE,
     PLAYHEAD_RESET,
     PLAYHEAD_THRESHOLD,
     compute_view_start,
@@ -131,3 +132,101 @@ class TestRender:
         pcm[83:100] = 1.0
         result = render(pcm, sr, position=0.5, view_start=0.0, zoom=1.0, width=10, height=3)
         assert "▄" in result.plain
+
+
+# ---------------------------------------------------------------------------
+# LRC marker rows
+# ---------------------------------------------------------------------------
+
+
+def _has_lrc_mark(result) -> bool:
+    return any(span.style == _LRC_MARK_STYLE for span in result._spans)
+
+
+class TestLrcMarkers:
+    def test_timestamp_in_view_produces_mark(self):
+        """A timestamp within the view produces at least one _LRC_MARK_STYLE span."""
+        pcm, sr = _sine()
+        # position=9.0 → playhead on row 7; timestamp at 1.0 → row 0 (different row)
+        result = render(
+            pcm,
+            sr,
+            position=9.0,
+            view_start=0.0,
+            zoom=10.0,
+            width=10,
+            height=8,
+            lrc_timestamps=[1.0],
+        )
+        assert _has_lrc_mark(result)
+
+    def test_no_timestamps_no_marks(self):
+        """No lrc_timestamps → no _LRC_MARK_STYLE spans."""
+        pcm, sr = _sine()
+        result = render(pcm, sr, position=2.0, view_start=0.0, zoom=10.0, width=10, height=8)
+        assert not _has_lrc_mark(result)
+
+    def test_empty_timestamps_list_no_marks(self):
+        """Empty list → no _LRC_MARK_STYLE spans."""
+        pcm, sr = _sine()
+        result = render(
+            pcm,
+            sr,
+            position=2.0,
+            view_start=0.0,
+            zoom=10.0,
+            width=10,
+            height=8,
+            lrc_timestamps=[],
+        )
+        assert not _has_lrc_mark(result)
+
+    def test_timestamp_outside_view_ignored(self):
+        """A timestamp beyond the view window produces no mark."""
+        pcm, sr = _sine()
+        result = render(
+            pcm,
+            sr,
+            position=5.0,
+            view_start=0.0,
+            zoom=10.0,
+            width=10,
+            height=8,
+            lrc_timestamps=[50.0],  # well past view end
+        )
+        assert not _has_lrc_mark(result)
+
+    def test_playhead_row_takes_priority_over_lrc_mark(self):
+        """Playhead row takes priority when a timestamp falls on it — no mark style applied."""
+        pcm, sr = _sine()
+        # position=0.1 → ph_vrow=0, ph_trow=0. timestamp at 0.1 → same trow=0.
+        # The playhead continue fires before the mark is applied.
+        result = render(
+            pcm,
+            sr,
+            position=0.1,
+            view_start=0.0,
+            zoom=10.0,
+            width=10,
+            height=8,
+            lrc_timestamps=[0.1],
+        )
+        assert "▶" in str(result)
+        assert not _has_lrc_mark(result)
+
+    def test_multiple_timestamps_mark_multiple_rows(self):
+        """Multiple timestamps in view mark multiple rows."""
+        pcm, sr = _sine()
+        # position=9.0 → ph_trow=7. Timestamps at 1.0 (row 0) and 3.0 (row 4) — both non-playhead.
+        result = render(
+            pcm,
+            sr,
+            position=9.0,
+            view_start=0.0,
+            zoom=10.0,
+            width=10,
+            height=8,
+            lrc_timestamps=[1.0, 3.0],
+        )
+        mark_spans = [s for s in result._spans if s.style == _LRC_MARK_STYLE]
+        assert len(mark_spans) > 0

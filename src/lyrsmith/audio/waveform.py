@@ -26,6 +26,7 @@ _FULL = "█"
 _EMPTY = " "
 
 _BAR_STYLE = Style(color="white")
+_LRC_MARK_STYLE = Style(color="yellow3")
 _PLAYHEAD_STYLE = Style(color="bright_cyan")
 
 
@@ -51,10 +52,14 @@ def render(
     zoom: float,
     width: int,
     height: int,
+    lrc_timestamps: list[float] | None = None,
 ) -> Text:
     """
     Render waveform as a Rich Text (newline-separated rows).
     Effective vertical resolution is height * 2 via halfblock chars.
+
+    Rows whose time window contains an LRC line timestamp are rendered in
+    _LRC_MARK_STYLE instead of _BAR_STYLE.
     """
     if pcm is None or len(pcm) == 0 or width <= 0 or height <= 0:
         return Text("\n".join([" " * width] * height))
@@ -67,6 +72,14 @@ def render(
     ph_vrow = int((position - view_start) / zoom * vrows)
     ph_vrow = max(0, min(vrows - 1, ph_vrow))
     ph_trow = ph_vrow // 2
+
+    # LRC marker rows: set of terminal rows that contain at least one timestamp
+    marked_trows: set[int] = set()
+    if lrc_timestamps:
+        for ts in lrc_timestamps:
+            vr = int((ts - view_start) / zoom * vrows)
+            if 0 <= vr < vrows:
+                marked_trows.add(vr // 2)
 
     # Per-virtual-row peak amplitude
     amps: list[float] = []
@@ -95,6 +108,8 @@ def render(
             result.append(bar, style=_PLAYHEAD_STYLE)
             continue
 
+        bar_style = _LRC_MARK_STYLE if tr in marked_trows else _BAR_STYLE
+
         top_f = round(norm[tr * 2] * width) if tr * 2 < len(norm) else 0
         bot_f = round(norm[tr * 2 + 1] * width) if tr * 2 + 1 < len(norm) else 0
 
@@ -102,11 +117,11 @@ def render(
             t = col < top_f
             b = col < bot_f
             if t and b:
-                result.append(_FULL, style=_BAR_STYLE)
+                result.append(_FULL, style=bar_style)
             elif t:
-                result.append(_UPPER, style=_BAR_STYLE)
+                result.append(_UPPER, style=bar_style)
             elif b:
-                result.append(_LOWER, style=_BAR_STYLE)
+                result.append(_LOWER, style=bar_style)
             else:
                 result.append(_EMPTY)
 

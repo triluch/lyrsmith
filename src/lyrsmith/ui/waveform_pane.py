@@ -33,14 +33,19 @@ VOL_MIN = 0.0
 VOL_MAX = 100.0
 
 
-def _fmt_ts(seconds: float) -> str:
-    """Format seconds as LRC-style [mm:ss.xx]."""
+def _fmt_single(seconds: float) -> str:
+    """Format seconds as mm:ss.xx (no brackets)."""
     total_cs = round(seconds * 100)
     cs = total_cs % 100
     total_s = total_cs // 100
     s = total_s % 60
     m = total_s // 60
-    return f"[{m:02d}:{s:02d}.{cs:02d}]"
+    return f"{m:02d}:{s:02d}.{cs:02d}"
+
+
+def _fmt_ts_pair(position: float, duration: float) -> str:
+    """Format position/duration as [mm:ss.xx/mm:ss.xx]."""
+    return f"[{_fmt_single(position)}/{_fmt_single(duration)}]"
 
 
 def _fmt_vol(volume: float) -> str:
@@ -99,12 +104,14 @@ class WaveformPane(Widget):
         self._pcm: np.ndarray | None = None
         self._sample_rate: int = 44100
         self._position: float = 0.0
+        self._duration: float = 0.0
         self._view_start: float = 0.0
         self._zoom: float = 20.0
         self._volume: float = 100.0
+        self._lrc_timestamps: list[float] = []
 
     def compose(self) -> ComposeResult:
-        yield Label(_fmt_ts(0.0), id="wf-timestamp")
+        yield Label(_fmt_ts_pair(0.0, 0.0), id="wf-timestamp")
         yield Label(_fmt_vol(self._volume), id="wf-volume")
         yield Static("", id="wf-display")
 
@@ -116,6 +123,7 @@ class WaveformPane(Widget):
         self._pcm = pcm
         self._sample_rate = sample_rate
         self._position = 0.0
+        self._duration = len(pcm) / sample_rate if len(pcm) > 0 else 0.0
         self._view_start = 0.0
         self._redraw()
 
@@ -135,6 +143,10 @@ class WaveformPane(Widget):
         self._redraw_volume()
         if changed:
             self.post_message(self.VolumeChanged(self._volume))
+
+    def set_lrc_timestamps(self, timestamps: list[float]) -> None:
+        self._lrc_timestamps = timestamps
+        self._redraw()
 
     def update_position(self, position: float) -> None:
         self._position = position
@@ -161,7 +173,7 @@ class WaveformPane(Widget):
         self.query_one("#wf-volume", Label).update(_fmt_vol(self._volume))
 
     def _redraw(self) -> None:
-        self.query_one("#wf-timestamp", Label).update(_fmt_ts(self._position))
+        self.query_one("#wf-timestamp", Label).update(_fmt_ts_pair(self._position, self._duration))
 
         display = self.query_one("#wf-display", Static)
         w = self.content_size.width
@@ -183,6 +195,7 @@ class WaveformPane(Widget):
                 zoom=self._zoom,
                 width=w,
                 height=h,
+                lrc_timestamps=self._lrc_timestamps or None,
             )
         )
 

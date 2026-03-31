@@ -76,6 +76,52 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
+    def test_nudge_cursor_follows_line_after_reorder(self, make_app):
+        """Cursor and ListView highlight follow the nudged line when it changes position."""
+        # _SAMPLE_LRC: lines at 1, 3, 5, 7, 9 s.  Nudge line-0 (+1s × 3) to
+        # 4 s → it should sort to index 1 (after 3 s, before 5 s).
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = await self._setup(pilot)
+                assert ed._cursor_idx == 0
+                line_identity = ed._lines[0]
+
+                await pilot.press("right_square_bracket")  # +1 s → 2 s
+                await pilot.press("right_square_bracket")  # +1 s → 3.01 s (past 3 s)
+                await pilot.press("right_square_bracket")  # +1 s → 4.01 s
+                await pilot.pause()
+                await pilot.pause()  # second pause lets call_after_refresh fire
+
+                # The nudged line is now at a higher index
+                assert ed._lines[ed._cursor_idx] is line_identity
+                self._assert_highlight_on(pilot, ed)
+
+        asyncio.run(_impl())
+
+    def test_stamp_cursor_follows_line_after_reorder(self, make_app):
+        """Cursor and ListView highlight follow the stamped line when it changes position."""
+        # Stamp line-0 (1 s) to 4.5 s → it should sort to index 1 (after 3 s, before 5 s).
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = await self._setup(pilot)
+                assert ed._cursor_idx == 0
+                line_identity = ed._lines[0]
+
+                ed._current_position = 4.5
+                await pilot.press("t")
+                await pilot.pause()
+                await pilot.pause()
+
+                assert ed._lines[ed._cursor_idx] is line_identity
+                assert ed._lines[ed._cursor_idx].timestamp == pytest.approx(4.5)
+                self._assert_highlight_on(pilot, ed)
+
+        asyncio.run(_impl())
+
     def test_delete_removes_line_and_marks_dirty(self, make_app):
         _factory, _ = make_app
 
