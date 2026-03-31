@@ -8,6 +8,7 @@ from textual.app import ComposeResult
 from textual.message import Message
 from textual.timer import Timer
 from textual.widget import Widget
+from textual.worker import get_current_worker
 
 from ..keybinds import KB_TRANSCRIBE
 from ..metadata.tags import read_info
@@ -85,7 +86,10 @@ class LeftPane(Widget):
 
     def _warm_cache(self, files: list[Path]) -> None:
         """Run in a thread: pre-populate the metadata cache for all files."""
+        worker = get_current_worker()
         for path in files:
+            if worker.is_cancelled:
+                break
             try:
                 read_info(path)
             except Exception:
