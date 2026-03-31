@@ -65,7 +65,9 @@ class TestLrcEditorInteractions:
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
                 ed = await self._setup(pilot)
-                ed._set_cursor(1)
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("down")
                 await pilot.pause()
                 original_ts = ed._lines[1].timestamp
                 await pilot.press("semicolon")  # -0.1 s
@@ -177,8 +179,6 @@ class TestLrcEditorInteractions:
                 from textual.widgets import TextArea as _TA
 
                 ed = await self._setup(pilot)
-                ed._set_cursor(0)
-                await pilot.pause()
                 await pilot.press("e")
                 await pilot.pause()
                 assert isinstance(pilot.app.screen, EditLineModal)
@@ -203,8 +203,6 @@ class TestLrcEditorInteractions:
                 from textual.widgets import TextArea as _TA
 
                 ed = await self._setup(pilot)
-                ed._set_cursor(0)
-                await pilot.pause()
                 original_count = len(ed._lines)
                 await pilot.press("e")
                 await pilot.pause()
@@ -236,8 +234,6 @@ class TestLrcEditorInteractions:
                 ed._lines[0].words = [w_hello, w_world]
                 ed._lines[0].end = 2.0
 
-                ed._set_cursor(0)
-                await pilot.pause()
                 await pilot.press("e")
                 await pilot.pause()
                 ta = pilot.app.screen.query_one("#edit-area", _TA)
@@ -270,8 +266,6 @@ class TestLrcEditorInteractions:
                     WordTiming(" Hello", 1.0, 1.4),
                     WordTiming(" World", 1.6, 2.0),
                 ]
-                ed._set_cursor(0)
-                await pilot.pause()
                 await pilot.press("e")
                 await pilot.pause()
                 ta = pilot.app.screen.query_one("#edit-area", _TA)
@@ -294,8 +288,6 @@ class TestLrcEditorInteractions:
                 ed = await self._setup(pilot)
                 words = [WordTiming(" First", 1.0, 1.3), WordTiming(" line", 1.4, 1.7)]
                 ed._lines[0].words = words
-                ed._set_cursor(0)
-                await pilot.pause()
                 await pilot.press("e")
                 await pilot.pause()
                 await pilot.press("enter")
@@ -317,8 +309,6 @@ class TestLrcEditorInteractions:
                     WordTiming(" First", 1.0, 1.3),
                     WordTiming(" line", 1.4, 1.7),
                 ]
-                ed._set_cursor(0)
-                await pilot.pause()
                 await pilot.press("e")
                 await pilot.pause()
                 ta = pilot.app.screen.query_one("#edit-area", _TA)
@@ -347,8 +337,6 @@ class TestLrcEditorInteractions:
                 ed._lines[0].words = []
                 ed._lines[0].timestamp = 1.0
                 ed._current_position = 3.5
-                ed._set_cursor(0)
-                await pilot.pause()
                 await pilot.press("e")
                 await pilot.pause()
                 ta = pilot.app.screen.query_one("#edit-area", _TA)
@@ -379,8 +367,6 @@ class TestLrcEditorInteractions:
                 ed._lines[0].words = [w_first]
                 ed._lines[1].text = "Line two"
                 ed._lines[1].words = [w_line, WordTiming(word=" two", start=1.8, end=2.1)]
-                ed._set_cursor(0)
-                await pilot.pause()
 
                 await pilot.press("m")
                 await pilot.pause()
@@ -418,8 +404,6 @@ class TestLrcEditorInteractions:
                 ed._lines[0].words = [w_first]
                 ed._lines[1].text = "line"
                 ed._lines[1].words = []
-                ed._set_cursor(0)
-                await pilot.pause()
 
                 await pilot.press("m")
                 await pilot.pause()
@@ -456,8 +440,6 @@ class TestLrcEditorInteractions:
                 ed._lines[0].words = [w_the_a]
                 ed._lines[1].text = "the end"
                 ed._lines[1].words = [w_the_b, w_end]
-                ed._set_cursor(0)
-                await pilot.pause()
 
                 await pilot.press("m")
                 await pilot.pause()
@@ -495,8 +477,6 @@ class TestLrcEditorInteractions:
                 ed._lines[1].timestamp = 2.0
                 ed._lines[1].end = 3.0
                 ed._lines[1].words = [WordTiming(word=" Second", start=2.0, end=2.6)]
-                ed._set_cursor(0)
-                await pilot.pause()
 
                 await pilot.press("e")
                 await pilot.pause()
@@ -534,8 +514,6 @@ class TestLrcEditorInteractions:
                 ed._lines[1].end = 3.0
                 ed._lines[1].text = "world"
                 ed._lines[1].words = []
-                ed._set_cursor(0)
-                await pilot.pause()
 
                 await pilot.press("e")
                 await pilot.pause()
@@ -574,8 +552,9 @@ class TestLrcEditorInteractions:
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
                 ed = await self._setup(pilot)
-                ed._set_cursor(3)
-                await pilot.pause()
+                for _ in range(4):
+                    await pilot.press("down")
+                    await pilot.pause()
                 await pilot.press("m")
                 await pilot.pause()
                 self._assert_highlight_on(pilot, ed)
@@ -590,8 +569,9 @@ class TestLrcEditorInteractions:
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
                 ed = await self._setup(pilot)
-                ed._set_cursor(3)
-                await pilot.pause()
+                for _ in range(4):
+                    await pilot.press("down")
+                    await pilot.pause()
                 await pilot.press("ctrl+d")
                 await pilot.pause()
                 self._assert_highlight_on(pilot, ed)
@@ -606,8 +586,9 @@ class TestLrcEditorInteractions:
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
                 ed = await self._setup(pilot)
-                ed._set_cursor(3)
-                await pilot.pause()
+                for _ in range(4):
+                    await pilot.press("down")
+                    await pilot.pause()
                 await pilot.press("i")
                 await pilot.pause()
                 self._assert_highlight_on(pilot, ed)

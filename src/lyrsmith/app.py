@@ -31,6 +31,7 @@ from .metadata.tags import (
 from .transcribe.whisper import AVAILABLE_MODELS, transcriber
 from .ui.bottom_bar import BottomBar
 from .ui.config_modal import ConfigModal
+from .ui.edit_line_modal import EditLineModal, EditLineResult
 from .ui.error_modal import ErrorModal
 from .ui.file_browser import FileBrowser
 from .ui.help_modal import HelpModal
@@ -633,6 +634,14 @@ class LyrsmithApp(App):
     ) -> None:
         self._player.toggle()
         self._w_editor.set_playing(self._player.is_playing)
+
+    def on_lyrics_editor_edit_line_requested(self, event: LyricsEditor.EditLineRequested) -> None:
+        idx = event.idx
+
+        def _handle(result: EditLineResult | None) -> None:
+            self._w_editor.apply_edit(idx, result)
+
+        self.push_screen(EditLineModal(event.text, idx), callback=_handle)
 
     # ------------------------------------------------------------------
     # Zoom sync → save to config

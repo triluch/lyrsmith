@@ -19,7 +19,7 @@ from textual.widgets import Label, ListItem, ListView, TextArea
 from .. import keybinds
 from ..lrc import LRCLine, active_line_index, parse, serialize
 from ._fast_list_view import FastListView
-from .edit_line_modal import EditLineModal, EditLineResult
+from .edit_line_modal import EditLineResult
 
 # key name → nudge delta mapping (uses event.key, consistent with all other bindings).
 _KEY_NUDGE: dict[str, float] = {
@@ -206,6 +206,18 @@ class LyricsEditor(Widget):
 
     class LinesChanged(Message):
         """Emitted after any LRC mutation (stamp, nudge, delete, insert, merge, split, undo)."""
+
+    class EditLineRequested(Message):
+        """Editor wants to open the edit modal for a specific line.
+
+        The app layer is responsible for pushing EditLineModal and calling
+        ``apply_edit`` with the result.
+        """
+
+        def __init__(self, idx: int, text: str) -> None:
+            super().__init__()
+            self.idx = idx
+            self.text = text
 
     # ------------------------------------------------------------------
 
@@ -574,92 +586,91 @@ class LyricsEditor(Widget):
     def _start_edit(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
             return
+        self.post_message(self.EditLineRequested(idx, self._lines[idx].text))
 
-        def _handle(result: EditLineResult | None) -> None:
-            if result is None or result.action == "cancel":
-                return
+    def apply_edit(self, idx: int, result: EditLineResult | None) -> None:
+        """Apply the result returned by EditLineModal for the line at *idx*.
 
-            if result.action == "save":
-                if result.text == self._lines[idx].text:
-                    return  # nothing changed — leave undo buffer intact
-                self._save_undo()
-                self._lines[idx].text = result.text
-                # If the word count is unchanged, patch the word text in-place
-                # so timing is preserved (e.g. fixing a single typo).
-                # If the count changed, the alignment is stale — clear it so
-                # subsequent splits fall back to the gap/syllable heuristic.
-                # (end timestamp is always kept; it's the segment boundary.)
-                new_tokens = result.text.split()
-                existing = self._lines[idx].words
-                if new_tokens and len(new_tokens) == len(existing):
-                    for w, tok in zip(existing, new_tokens):
-                        prefix = " " if w.word.startswith(" ") else ""
-                        w.word = prefix + tok
-                else:
-                    self._lines[idx].words = []
-                self._mark_dirty()
-                self._refresh_list()
-                self._set_cursor(idx)
+        Called by the app layer after the modal is dismissed.  Handles the
+        three possible outcomes: cancel (no-op), save, and split.
+        """
+        if result is None or result.action == "cancel":
+            return
 
-            elif result.action == "split":
-                self._save_undo()
-                # The original segment's end timestamp belongs to the second half.
-                # The first half's end is derived from its last word when word
-                # data is available; otherwise it is cleared.
-                original_end = self._lines[idx].end
-                original_words = self._lines[idx].words
+        if result.action == "save":
+            if result.text == self._lines[idx].text:
+                return  # nothing changed — leave undo buffer intact
+            self._save_undo()
+            self._lines[idx].text = result.text
+            # If the word count is unchanged, patch the word text in-place
+            # so timing is preserved (e.g. fixing a single typo).
+            # If the count changed, the alignment is stale — clear it so
+            # subsequent splits fall back to the gap/syllable heuristic.
+            # (end timestamp is always kept; it's the segment boundary.)
+            new_tokens = result.text.split()
+            existing = self._lines[idx].words
+            if new_tokens and len(new_tokens) == len(existing):
+                for w, tok in zip(existing, new_tokens):
+                    prefix = " " if w.word.startswith(" ") else ""
+                    w.word = prefix + tok
+            else:
+                self._lines[idx].words = []
+            self._mark_dirty()
+            self._refresh_list()
+            self._set_cursor(idx)
 
-                # Distribute word timing by counting tokens in the first-half
-                # text. This is robust against duplicate words across the split
-                # boundary (text-search would misfire on the first occurrence).
-                # Clamp to the available word count so partial word lists are
-                # handled gracefully.
-                n_first = len(result.text.split())
-                if original_words:
-                    split_word_idx = min(n_first, len(original_words))
-                    first_half_words = original_words[:split_word_idx]
-                    second_words = original_words[split_word_idx:]
-                    ts_from_words = second_words[0].start if second_words else None
-                else:
-                    first_half_words = []
-                    second_words = []
-                    ts_from_words = None
-                has_word_ts = ts_from_words is not None
+        elif result.action == "split":
+            self._save_undo()
+            # The original segment's end timestamp belongs to the second half.
+            # The first half's end is derived from its last word when word
+            # data is available; otherwise it is cleared.
+            original_end = self._lines[idx].end
+            original_words = self._lines[idx].words
 
-                self._lines[idx].text = result.text
-                self._lines[idx].words = first_half_words
-                # End time: last word's end when word data is available, else None.
-                self._lines[idx].end = first_half_words[-1].end if first_half_words else None
+            # Distribute word timing by counting tokens in the first-half
+            # text. This is robust against duplicate words across the split
+            # boundary (text-search would misfire on the first occurrence).
+            # Clamp to the available word count so partial word lists are
+            # handled gracefully.
+            n_first = len(result.text.split())
+            if original_words:
+                split_word_idx = min(n_first, len(original_words))
+                first_half_words = original_words[:split_word_idx]
+                second_words = original_words[split_word_idx:]
+                ts_from_words = second_words[0].start if second_words else None
+            else:
+                first_half_words = []
+                second_words = []
+                ts_from_words = None
+            has_word_ts = ts_from_words is not None
 
-                # Timestamp for second half: word-precise if available, otherwise
-                # fall back to current playback position or midpoint heuristic.
-                first_ts = self._lines[idx].timestamp
-                next_ts = (
-                    self._lines[idx + 1].timestamp
-                    if idx + 1 < len(self._lines)
-                    else first_ts + 2.0
+            self._lines[idx].text = result.text
+            self._lines[idx].words = first_half_words
+            # End time: last word's end when word data is available, else None.
+            self._lines[idx].end = first_half_words[-1].end if first_half_words else None
+
+            # Timestamp for second half: word-precise if available, otherwise
+            # fall back to current playback position or midpoint heuristic.
+            first_ts = self._lines[idx].timestamp
+            next_ts = (
+                self._lines[idx + 1].timestamp if idx + 1 < len(self._lines) else first_ts + 2.0
+            )
+            new_ts = (
+                ts_from_words
+                if has_word_ts
+                else (
+                    self._current_position
+                    if self._current_position > first_ts
+                    else (first_ts + next_ts) / 2
                 )
-                new_ts = (
-                    ts_from_words
-                    if has_word_ts
-                    else (
-                        self._current_position
-                        if self._current_position > first_ts
-                        else (first_ts + next_ts) / 2
-                    )
-                )
-                self._lines.insert(
-                    idx + 1,
-                    LRCLine(new_ts, result.second, end=original_end, words=second_words),
-                )
-                self._mark_dirty()
-                self._refresh_list()
-                self._set_cursor(idx)
-
-        self.app.push_screen(
-            EditLineModal(self._lines[idx].text, idx),
-            callback=_handle,
-        )
+            )
+            self._lines.insert(
+                idx + 1,
+                LRCLine(new_ts, result.second, end=original_end, words=second_words),
+            )
+            self._mark_dirty()
+            self._refresh_list()
+            self._set_cursor(idx)
 
     def _mark_dirty(self) -> None:
         self._is_dirty = True
