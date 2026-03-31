@@ -66,7 +66,7 @@ class ConfigModal(ModalScreen[Config | None]):
         align: center middle;
     }
     ConfigModal #outer {
-        width: 84;
+        width: 105;
         max-height: 90%;
         background: $surface;
     }
@@ -121,7 +121,7 @@ class ConfigModal(ModalScreen[Config | None]):
         background: $primary-background;
     }
     ConfigModal #help-area {
-        height: 4;
+        height: 5;
         width: 1fr;
         background: $panel;
         color: $text-muted;
