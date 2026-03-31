@@ -341,7 +341,7 @@ class LyricsEditor(Widget):
         if idx == self._active_idx:
             return
         self._active_idx = idx
-        self._refresh_active_style()
+        self._refresh_active_highlight()
         if idx >= 0:
             self._jump_to_line(idx)
 
@@ -369,18 +369,19 @@ class LyricsEditor(Widget):
             lv.append(item)
             self._list_items.append(item)
 
-    def _refresh_active_style(self) -> None:
-        lv = self.query_one("#lrc-list", ListView)
-        for i, item in enumerate(lv.children):
-            if not isinstance(item, ListItem):
-                continue
-            if i == self._active_idx:
-                item.add_class("active-line")
-            else:
-                item.remove_class("active-line")
-            # Update label text (timestamp may have changed)
-            if i < len(self._lines):
-                item.query_one(".line-text", Label).update(self._lines[i].display_str())
+    def _refresh_active_highlight(self) -> None:
+        """Toggle the active-line CSS class. No DOM text changes — safe at 10 Hz."""
+        for i, item in enumerate(self._list_items):
+            item.set_class(i == self._active_idx, "active-line")
+
+    def _refresh_all_labels(self) -> None:
+        """Update every list item's line-text label to match current line data.
+
+        Called after mutations that change timestamp or text (stamp, nudge).
+        Not called during playback ticks.
+        """
+        for item, line in zip(self._list_items, self._lines):
+            item.query_one(".line-text", Label).update(line.display_str())
 
     def _jump_to_line(self, idx: int) -> None:
         """80/20 paged scroll: if idx is past 80% of visible rows, jump to 20%."""
@@ -516,7 +517,8 @@ class LyricsEditor(Widget):
                     self._cursor_idx,
                 )
                 self._mark_dirty()
-                self._refresh_active_style()
+                self._refresh_all_labels()
+                self._refresh_active_highlight()
                 self._set_cursor(self._cursor_idx)
 
         elif key == keybinds.KB_UNDO:
@@ -550,7 +552,8 @@ class LyricsEditor(Widget):
             return
         self._lines, self._cursor_idx = _op_nudge(self._lines, idx, delta)
         self._mark_dirty()
-        self._refresh_active_style()
+        self._refresh_all_labels()
+        self._refresh_active_highlight()
         self._set_cursor(self._cursor_idx)
 
     def _delete(self, idx: int) -> None:
