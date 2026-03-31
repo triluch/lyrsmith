@@ -450,13 +450,9 @@ class LyricsEditor(Widget):
     # ------------------------------------------------------------------
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
-        if event.item is None:
+        if event.item is None or event.control.index is None:
             return
-        lv = self.query_one("#lrc-list", ListView)
-        for i, child in enumerate(lv.children):
-            if child is event.item:
-                self._cursor_idx = i
-                break
+        self._cursor_idx = event.control.index
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         """Track dirty state for plain text mode. Ignored during initial load."""

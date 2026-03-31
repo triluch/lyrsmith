@@ -191,23 +191,17 @@ class FileBrowser(Widget):
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         event.stop()
-        if event.item is None:
+        if event.item is None or event.control.index is None:
             return
-        idx = self._index_of(event.item)
-        if idx is None:
-            return
-        entry = self._entries[idx]
+        entry = self._entries[event.control.index]
         if entry is not None:
             self.post_message(self.FileHighlighted(entry))
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         event.stop()
-        if event.item is None:
+        if event.item is None or event.control.index is None:
             return
-        idx = self._index_of(event.item)
-        if idx is None:
-            return
-        entry = self._entries[idx]
+        entry = self._entries[event.control.index]
         if entry is None:
             # ".." — go up
             self._populate(self._path.parent)
@@ -239,13 +233,6 @@ class FileBrowser(Widget):
                 self._apply_filter()
             elif self._path.parent != self._path:
                 self._populate(self._path.parent)
-
-    def _index_of(self, item: ListItem) -> int | None:
-        lv = self.query_one("#browser-list", ListView)
-        for i, child in enumerate(lv.children):
-            if child is item:
-                return i
-        return None
 
     @property
     def current_path(self) -> Path:

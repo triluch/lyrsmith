@@ -49,9 +49,11 @@ class TestFileBrowser:
         async def _impl():
             async with _factory(path=tmp_path).run_test(headless=True) as pilot:
                 await pilot.pause()
-                fb = pilot.app.query_one(FileBrowser)
-                lv = pilot.app.query_one("#browser-list")
-                lv.index = len(fb._entries) - 1
+                # Entry order: ".." (0), song.mp3 (1).
+                # lv.index starts None; first down → 0 (..); second → 1 (file).
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("down")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -71,9 +73,11 @@ class TestFileBrowser:
             async with _factory(path=tmp_path).run_test(headless=True) as pilot:
                 await pilot.pause()
                 fb = pilot.app.query_one(FileBrowser)
-                lv = pilot.app.query_one("#browser-list")
-                idx = next(i for i, e in enumerate(fb._entries) if e is not None and e.is_dir())
-                lv.index = idx
+                # Entry order: ".." (0), subdir/ (1), song.mp3 (2).
+                # Navigate to subdir: down × 2 (None → 0, 0 → 1).
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("down")
                 await pilot.pause()
                 await pilot.press("enter")
                 await pilot.pause()
@@ -238,13 +242,11 @@ class TestFileBrowser:
             async with _factory(path=tmp_path).run_test(headless=True) as pilot:
                 await pilot.pause()
                 fb = pilot.app.query_one(FileBrowser)
-                lv = pilot.app.query_one("#browser-list")
                 await pilot.press("s")
                 await pilot.pause()
                 assert fb._filter == "s"
-                idx = next(i for i, e in enumerate(fb._entries) if e is not None and e.is_dir())
-                lv.index = idx
-                await pilot.pause()
+                # _apply_filter moves cursor to first non-dotdot match (subdir at idx 1).
+                # After one pause the reactive has settled — Enter descends directly.
                 await pilot.press("enter")
                 await pilot.pause()
                 assert fb._filter == ""
