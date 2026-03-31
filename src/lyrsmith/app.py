@@ -177,7 +177,7 @@ class LyrsmithApp(App):
             yield IndicatorSegment(id="ind-edit", classes="ind-edit")
         with Horizontal(id="content"):
             yield LeftPane(self._initial_dir)
-            yield WaveformPane(self._player)
+            yield WaveformPane()
             yield LyricsEditor()
         yield BottomBar()
 
@@ -602,10 +602,17 @@ class LyrsmithApp(App):
         self._w_waveform.set_lrc_timestamps([line.timestamp for line in self._w_editor.lrc_lines])
 
     # ------------------------------------------------------------------
-    # Waveform seek → sync player
+    # Waveform messages → player + editor sync
     # ------------------------------------------------------------------
 
+    def on_waveform_pane_play_pause_requested(
+        self, _event: WaveformPane.PlayPauseRequested
+    ) -> None:
+        self._player.toggle()
+        self._w_editor.set_playing(self._player.is_playing)
+
     def on_waveform_pane_seek_requested(self, event: WaveformPane.SeekRequested) -> None:
+        self._player.seek(event.position)
         self._w_editor.update_position(event.position)
 
     def on_lyrics_editor_seek_requested(self, event: LyricsEditor.SeekRequested) -> None:
@@ -636,6 +643,7 @@ class LyrsmithApp(App):
         save_config(self._config)
 
     def on_waveform_pane_volume_changed(self, event: WaveformPane.VolumeChanged) -> None:
+        self._player.volume = event.volume
         self._config.volume = event.volume
         save_config(self._config)
 

@@ -64,6 +64,7 @@ class FakePlayer:
         self._position = 0.0
         self._playing = False
         self._duration = 120.0
+        self._volume = 100.0
         self.loaded_path: Path | None = None
 
     def load(self, path: Path) -> None:
@@ -100,3 +101,11 @@ class FakePlayer:
     @property
     def duration(self) -> float:
         return self._duration
+
+    @property
+    def volume(self) -> float:
+        return self._volume
+
+    @volume.setter
+    def volume(self, value: float) -> None:
+        self._volume = max(0.0, min(100.0, value))

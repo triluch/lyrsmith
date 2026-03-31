@@ -10,7 +10,6 @@ from textual.widgets import Label, Static
 
 from .. import keybinds
 from ..audio import waveform as wf
-from ..audio.player import Player
 
 ZOOM_STEP = 5.0
 ZOOM_MIN = 5.0
@@ -70,6 +69,9 @@ class WaveformPane(Widget):
     can_focus = True
     CAN_FOCUS_CHILDREN = False
 
+    class PlayPauseRequested(Message):
+        """User pressed play/pause in the waveform pane."""
+
     class SeekRequested(Message):
         def __init__(self, position: float) -> None:
             super().__init__()
@@ -85,9 +87,8 @@ class WaveformPane(Widget):
             super().__init__()
             self.volume = volume
 
-    def __init__(self, player: Player) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self._player = player
         self._pcm: np.ndarray | None = None
         self._sample_rate: int = 44100
         self._position: float = 0.0
@@ -126,7 +127,6 @@ class WaveformPane(Widget):
         clamped = max(VOL_MIN, min(VOL_MAX, volume))
         changed = clamped != self._volume
         self._volume = clamped
-        self._player.volume = clamped
         self._redraw_volume()
         if changed:
             self.post_message(self.VolumeChanged(self._volume))
@@ -197,7 +197,7 @@ class WaveformPane(Widget):
         key = event.key
         if key == keybinds.KB_PLAY_PAUSE:
             event.stop()
-            self._player.toggle()
+            self.post_message(self.PlayPauseRequested())
         elif key == keybinds.KB_SEEK_FWD:
             event.stop()
             self._seek(keybinds.SEEK_SMALL)
@@ -225,5 +225,4 @@ class WaveformPane(Widget):
 
     def _seek(self, delta: float) -> None:
         target = max(0.0, self._position + delta)
-        self._player.seek(target)
         self.post_message(self.SeekRequested(target))
