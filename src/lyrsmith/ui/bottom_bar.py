@@ -6,43 +6,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Label
 
-from ..keybinds import (
-    KB_BACK,
-    KB_DELETE_LINE,
-    KB_DISCARD_RELOAD,
-    KB_DOWN,
-    KB_EDIT_LINE,
-    KB_LINE_DOWN,
-    KB_LINE_UP,
-    KB_MERGE_LINE,
-    KB_NEXT_LANG,
-    KB_NEXT_MODEL,
-    KB_NUDGE_FINE_BACK,
-    KB_NUDGE_FINE_FWD,
-    KB_NUDGE_MED_BACK,
-    KB_NUDGE_MED_FWD,
-    KB_NUDGE_ROUGH_BACK,
-    KB_NUDGE_ROUGH_FWD,
-    KB_PLAY_PAUSE,
-    KB_QUIT,
-    KB_SAVE,
-    KB_SEEK_BACK,
-    KB_SEEK_BACK_LARGE,
-    KB_SEEK_FWD,
-    KB_SEEK_FWD_LARGE,
-    KB_SEEK_TO_LINE,
-    KB_SELECT,
-    KB_STAMP_LINE,
-    KB_TRANSCRIBE,
-    KB_UNDO,
-    KB_UP,
-    KB_VOL_DOWN,
-    KB_VOL_UP,
-    KB_ZOOM_IN,
-    KB_ZOOM_OUT,
-    SEEK_LARGE,
-    SEEK_SMALL,
-)
+from .. import keybinds
 
 # ------------------------------------------------------------------
 # Key-name → display string translation
@@ -129,58 +93,75 @@ def _build_hints() -> dict[str, str]:
     return {
         "browser": _SEP.join(
             [
-                _kk(KB_UP, KB_DOWN, "Navigate"),
-                _k(KB_SELECT, "Load"),
-                _k(KB_BACK, "Parent"),
-                _k(KB_TRANSCRIBE, "Transcribe"),
-                _k(KB_NEXT_MODEL, "Model"),
-                _k(KB_NEXT_LANG, "Lang"),
-                _k(KB_SAVE, "Save"),
-                _k(KB_QUIT, "Quit"),
+                _kk(keybinds.KB_UP, keybinds.KB_DOWN, "Navigate"),
+                _k(keybinds.KB_SELECT, "Load"),
+                _k(keybinds.KB_BACK, "Parent"),
+                _k(keybinds.KB_TRANSCRIBE, "Transcribe"),
+                _k(keybinds.KB_PROMPT, "Prompt"),
+                _k(keybinds.KB_NEXT_MODEL, "Model"),
+                _k(keybinds.KB_NEXT_LANG, "Lang"),
+                _k(keybinds.KB_SAVE, "Save"),
+                _k(keybinds.KB_QUIT, "Quit"),
             ]
         ),
         "waveform": _SEP.join(
             [
-                _k(KB_PLAY_PAUSE, "Play/Pause"),
-                _kk(KB_SEEK_BACK, KB_SEEK_FWD, f"Seek {int(SEEK_SMALL)}s"),
-                _kk(KB_SEEK_BACK_LARGE, KB_SEEK_FWD_LARGE, f"Seek {int(SEEK_LARGE)}s"),
-                _kk(KB_ZOOM_IN, KB_ZOOM_OUT, "Zoom", "/"),
-                _kk(KB_VOL_DOWN, KB_VOL_UP, "Volume", "/"),
-                _k(KB_SAVE, "Save"),
-                _k(KB_QUIT, "Quit"),
+                _k(keybinds.KB_PLAY_PAUSE, "Play/Pause"),
+                _kk(
+                    keybinds.KB_SEEK_BACK,
+                    keybinds.KB_SEEK_FWD,
+                    f"Seek {int(keybinds.SEEK_SMALL)}s",
+                ),
+                _kk(
+                    keybinds.KB_SEEK_BACK_LARGE,
+                    keybinds.KB_SEEK_FWD_LARGE,
+                    f"Seek {int(keybinds.SEEK_LARGE)}s",
+                ),
+                _kk(keybinds.KB_ZOOM_IN, keybinds.KB_ZOOM_OUT, "Zoom", "/"),
+                _kk(keybinds.KB_VOL_DOWN, keybinds.KB_VOL_UP, "Volume", "/"),
+                _k(keybinds.KB_SAVE, "Save"),
+                _k(keybinds.KB_QUIT, "Quit"),
             ]
         ),
         "lyrics-lrc": _SEP.join(
             [
-                _k(KB_PLAY_PAUSE, "Play/Pause"),
-                _kk(KB_SEEK_BACK, KB_SEEK_FWD, f"Seek {int(SEEK_SMALL)}s"),
-                _kk(KB_SEEK_BACK_LARGE, KB_SEEK_FWD_LARGE, f"{int(SEEK_LARGE)}s"),
-                _kk(KB_LINE_UP, KB_LINE_DOWN, "Navigate"),
-                _k(KB_SEEK_TO_LINE, "Seek"),
-                _k(KB_STAMP_LINE, "Stamp"),
-                _k(KB_UNDO, "Undo"),
-                _kk(KB_NUDGE_FINE_BACK, KB_NUDGE_FINE_FWD, "Fine±"),
-                _kk(KB_NUDGE_MED_BACK, KB_NUDGE_MED_FWD, "Med±"),
-                _kk(KB_NUDGE_ROUGH_BACK, KB_NUDGE_ROUGH_FWD, "Rough±"),
-                _k(KB_EDIT_LINE, "Edit/Split"),
-                _k(KB_MERGE_LINE, "Merge"),
-                _k(KB_DELETE_LINE, "Delete"),
-                _k(KB_SAVE, "Save"),
+                _k(keybinds.KB_PLAY_PAUSE, "Play/Pause"),
+                _kk(
+                    keybinds.KB_SEEK_BACK,
+                    keybinds.KB_SEEK_FWD,
+                    f"Seek {int(keybinds.SEEK_SMALL)}s",
+                ),
+                _kk(
+                    keybinds.KB_SEEK_BACK_LARGE,
+                    keybinds.KB_SEEK_FWD_LARGE,
+                    f"{int(keybinds.SEEK_LARGE)}s",
+                ),
+                _kk(keybinds.KB_LINE_UP, keybinds.KB_LINE_DOWN, "Navigate"),
+                _k(keybinds.KB_SEEK_TO_LINE, "Seek"),
+                _k(keybinds.KB_STAMP_LINE, "Stamp"),
+                _k(keybinds.KB_UNDO, "Undo"),
+                _kk(keybinds.KB_NUDGE_FINE_BACK, keybinds.KB_NUDGE_FINE_FWD, "Fine±"),
+                _kk(keybinds.KB_NUDGE_MED_BACK, keybinds.KB_NUDGE_MED_FWD, "Med±"),
+                _kk(keybinds.KB_NUDGE_ROUGH_BACK, keybinds.KB_NUDGE_ROUGH_FWD, "Rough±"),
+                _k(keybinds.KB_EDIT_LINE, "Edit/Split"),
+                _k(keybinds.KB_MERGE_LINE, "Merge"),
+                _k(keybinds.KB_DELETE_LINE, "Delete"),
+                _k(keybinds.KB_SAVE, "Save"),
             ]
         ),
         "lyrics-plain": _SEP.join(
             [
                 f"[{_DC}]Edit freely[/]",
-                _k(KB_SAVE, "Save"),
-                _k(KB_DISCARD_RELOAD, "Reload"),
-                _k(KB_QUIT, "Quit"),
+                _k(keybinds.KB_SAVE, "Save"),
+                _k(keybinds.KB_DISCARD_RELOAD, "Reload"),
+                _k(keybinds.KB_QUIT, "Quit"),
             ]
         ),
         "empty": _SEP.join(
             [
                 f"[{_DC}]Browse to a file and press "
-                f"[{_KC}]{fmt_key(KB_SELECT)}[/][{_DC}] to load[/]",
-                _k(KB_QUIT, "Quit"),
+                f"[{_KC}]{fmt_key(keybinds.KB_SELECT)}[/][{_DC}] to load[/]",
+                _k(keybinds.KB_QUIT, "Quit"),
             ]
         ),
     }

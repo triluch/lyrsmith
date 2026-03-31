@@ -12,7 +12,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Label
 
-from ..keybinds import KB_CONFIG, KB_HELP
+from .. import keybinds
 from .bottom_bar import fmt_key
 
 # Full widget width — padding is removed from CSS and handled manually in content
@@ -80,8 +80,8 @@ class TopBar(Widget):
         yield Label("", id="lang-label")
         yield Label("", id="status")
         with Horizontal(id="fn-keys"):
-            yield Label(f"{fmt_key(KB_HELP)} Help", id="f1-label")
-            yield Label(f"{fmt_key(KB_CONFIG)} Config", id="f2-label")
+            yield Label(f"{fmt_key(keybinds.KB_HELP)} Help", id="f1-label")
+            yield Label(f"{fmt_key(keybinds.KB_CONFIG)} Config", id="f2-label")
 
     def watch_song_title(self, value: str) -> None:
         self.query_one("#song-title", Label).update(value)

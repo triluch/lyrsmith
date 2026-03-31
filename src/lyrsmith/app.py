@@ -14,21 +14,11 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.widget import Widget
 
+from . import keybinds
 from .audio.decoder import decode_to_pcm
 from .audio.player import Player
 from .config import Config
 from .config import save as save_config
-from .keybinds import (
-    KB_CONFIG,
-    KB_DISCARD_RELOAD,
-    KB_HELP,
-    KB_NEXT_LANG,
-    KB_NEXT_MODEL,
-    KB_PROMPT,
-    KB_QUIT,
-    KB_SAVE,
-    KB_TRANSCRIBE,
-)
 from .lrc import attach_word_data, is_lrc
 from .lrc import parse as parse_lrc
 from .metadata.tags import (
@@ -154,15 +144,15 @@ class LyrsmithApp(App):
     """
 
     BINDINGS = [
-        Binding(KB_QUIT, "quit_app", "Quit", show=False),
-        Binding(KB_SAVE, "save", "Save", show=False),
-        Binding(KB_DISCARD_RELOAD, "discard_reload", "Reload", show=False),
-        Binding(KB_TRANSCRIBE, "transcribe", "Transcribe", show=False),
-        Binding(KB_PROMPT, "show_prompt", "Prompt", show=False, priority=True),
-        Binding(KB_NEXT_MODEL, "next_model", "Model", show=False),
-        Binding(KB_NEXT_LANG, "next_lang", "Language", show=False),
-        Binding(KB_HELP, "show_help", "Help", show=False),
-        Binding(KB_CONFIG, "show_config", "Config", show=False),
+        Binding(keybinds.KB_QUIT, "quit_app", "Quit", show=False),
+        Binding(keybinds.KB_SAVE, "save", "Save", show=False),
+        Binding(keybinds.KB_DISCARD_RELOAD, "discard_reload", "Reload", show=False),
+        Binding(keybinds.KB_TRANSCRIBE, "transcribe", "Transcribe", show=False),
+        Binding(keybinds.KB_PROMPT, "show_prompt", "Prompt", show=False, priority=True),
+        Binding(keybinds.KB_NEXT_MODEL, "next_model", "Model", show=False),
+        Binding(keybinds.KB_NEXT_LANG, "next_lang", "Language", show=False),
+        Binding(keybinds.KB_HELP, "show_help", "Help", show=False),
+        Binding(keybinds.KB_CONFIG, "show_config", "Config", show=False),
     ]
 
     def __init__(self, initial_dir: Path, config: Config) -> None:

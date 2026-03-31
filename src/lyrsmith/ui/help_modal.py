@@ -8,48 +8,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Label, Static
 
-from ..keybinds import (
-    KB_BACK,
-    KB_CONFIG,
-    KB_DELETE_LINE,
-    KB_DISCARD_RELOAD,
-    KB_DOWN,
-    KB_EDIT_LINE,
-    KB_HELP,
-    KB_LINE_DOWN,
-    KB_LINE_UP,
-    KB_MERGE_LINE,
-    KB_NEXT_LANG,
-    KB_NEXT_MODEL,
-    KB_NEXT_PANE,
-    KB_NUDGE_FINE_BACK,
-    KB_NUDGE_FINE_FWD,
-    KB_NUDGE_MED_BACK,
-    KB_NUDGE_MED_FWD,
-    KB_NUDGE_ROUGH_BACK,
-    KB_NUDGE_ROUGH_FWD,
-    KB_PLAY_PAUSE,
-    KB_PREV_PANE,
-    KB_QUIT,
-    KB_SAVE,
-    KB_SEEK_BACK,
-    KB_SEEK_BACK_LARGE,
-    KB_SEEK_FWD,
-    KB_SEEK_FWD_LARGE,
-    KB_SEEK_TO_LINE,
-    KB_SELECT,
-    KB_STAMP_LINE,
-    KB_TRANSCRIBE,
-    KB_UNDO,
-    KB_UP,
-    KB_ZOOM_IN,
-    KB_ZOOM_OUT,
-    NUDGE_FINE,
-    NUDGE_MED,
-    NUDGE_ROUGH,
-    SEEK_LARGE,
-    SEEK_SMALL,
-)
+from .. import keybinds
 from .bottom_bar import fmt_key
 
 _KC = "#d0d0d0"  # key colour
@@ -61,39 +20,40 @@ _LEFT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Global",
         [
-            (KB_QUIT, "Quit"),
-            (KB_SAVE, "Save lyrics to file"),
-            (KB_UNDO, "Undo last edit"),
-            (KB_DISCARD_RELOAD, "Discard changes and reload"),
-            (KB_TRANSCRIBE, "Transcribe with Whisper"),
-            (KB_NEXT_MODEL, "Cycle Whisper model"),
-            (KB_NEXT_LANG, "Cycle Whisper language"),
-            (KB_NEXT_PANE, "Focus next pane"),
-            (KB_PREV_PANE, "Focus previous pane"),
-            (KB_HELP, "This help screen"),
-            (KB_CONFIG, "Config editor"),
+            (keybinds.KB_QUIT, "Quit"),
+            (keybinds.KB_SAVE, "Save lyrics to file"),
+            (keybinds.KB_UNDO, "Undo last edit"),
+            (keybinds.KB_DISCARD_RELOAD, "Discard changes and reload"),
+            (keybinds.KB_TRANSCRIBE, "Transcribe with Whisper"),
+            (keybinds.KB_PROMPT, "Set Whisper initial prompt"),
+            (keybinds.KB_NEXT_MODEL, "Cycle Whisper model"),
+            (keybinds.KB_NEXT_LANG, "Cycle Whisper language"),
+            (keybinds.KB_NEXT_PANE, "Focus next pane"),
+            (keybinds.KB_PREV_PANE, "Focus previous pane"),
+            (keybinds.KB_HELP, "This help screen"),
+            (keybinds.KB_CONFIG, "Config editor"),
         ],
     ),
     (
         "File Browser",
         [
-            (KB_UP, "Move selection up"),
-            (KB_DOWN, "Move selection down"),
-            (KB_SELECT, "Load selected file"),
-            (KB_BACK, "Go up / trim filter"),
+            (keybinds.KB_UP, "Move selection up"),
+            (keybinds.KB_DOWN, "Move selection down"),
+            (keybinds.KB_SELECT, "Load selected file"),
+            (keybinds.KB_BACK, "Go up / trim filter"),
             ("a-z", "Filter list"),
         ],
     ),
     (
         "Waveform Pane",
         [
-            (KB_PLAY_PAUSE, "Play / Pause"),
-            (KB_SEEK_FWD, f"Seek forward {int(SEEK_SMALL)}s"),
-            (KB_SEEK_BACK, f"Seek back {int(SEEK_SMALL)}s"),
-            (KB_SEEK_FWD_LARGE, f"Seek forward {int(SEEK_LARGE)}s"),
-            (KB_SEEK_BACK_LARGE, f"Seek back {int(SEEK_LARGE)}s"),
-            (KB_ZOOM_IN, "Zoom in"),
-            (KB_ZOOM_OUT, "Zoom out"),
+            (keybinds.KB_PLAY_PAUSE, "Play / Pause"),
+            (keybinds.KB_SEEK_FWD, f"Seek forward {int(keybinds.SEEK_SMALL)}s"),
+            (keybinds.KB_SEEK_BACK, f"Seek back {int(keybinds.SEEK_SMALL)}s"),
+            (keybinds.KB_SEEK_FWD_LARGE, f"Seek forward {int(keybinds.SEEK_LARGE)}s"),
+            (keybinds.KB_SEEK_BACK_LARGE, f"Seek back {int(keybinds.SEEK_LARGE)}s"),
+            (keybinds.KB_ZOOM_IN, "Zoom in"),
+            (keybinds.KB_ZOOM_OUT, "Zoom out"),
         ],
     ),
 ]
@@ -103,25 +63,31 @@ _RIGHT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Lyrics Editor — LRC mode",
         [
-            (KB_LINE_UP, "Move selection up"),
-            (KB_LINE_DOWN, "Move selection down"),
-            (KB_PLAY_PAUSE, "Play / Pause"),
-            (KB_SEEK_TO_LINE, "Seek to line timestamp"),
-            (KB_STAMP_LINE, "Stamp time to line"),
-            (KB_EDIT_LINE, "Edit / split line (Ctrl+K to split)"),
-            (KB_MERGE_LINE, "Merge line with next"),
-            (KB_DELETE_LINE, "Delete line"),
-            (KB_UNDO, "Undo"),
-            (KB_SEEK_FWD, f"Seek forward {int(SEEK_SMALL)}s"),
-            (KB_SEEK_BACK, f"Seek back {int(SEEK_SMALL)}s"),
-            (KB_SEEK_FWD_LARGE, f"Seek forward {int(SEEK_LARGE)}s"),
-            (KB_SEEK_BACK_LARGE, f"Seek back {int(SEEK_LARGE)}s"),
-            (KB_NUDGE_FINE_FWD, f"Nudge +{int(NUDGE_FINE * 1000)}ms"),
-            (KB_NUDGE_FINE_BACK, f"Nudge \u2212{int(NUDGE_FINE * 1000)}ms"),
-            (KB_NUDGE_MED_FWD, f"Nudge +{int(NUDGE_MED * 1000)}ms"),
-            (KB_NUDGE_MED_BACK, f"Nudge \u2212{int(NUDGE_MED * 1000)}ms"),
-            (KB_NUDGE_ROUGH_FWD, f"Nudge +{int(NUDGE_ROUGH)}s"),
-            (KB_NUDGE_ROUGH_BACK, f"Nudge \u2212{int(NUDGE_ROUGH)}s"),
+            (keybinds.KB_LINE_UP, "Move selection up"),
+            (keybinds.KB_LINE_DOWN, "Move selection down"),
+            (keybinds.KB_PLAY_PAUSE, "Play / Pause"),
+            (keybinds.KB_SEEK_TO_LINE, "Seek to line timestamp"),
+            (keybinds.KB_STAMP_LINE, "Stamp time to line"),
+            (keybinds.KB_EDIT_LINE, "Edit / split line (Ctrl+K to split)"),
+            (keybinds.KB_MERGE_LINE, "Merge line with next"),
+            (keybinds.KB_DELETE_LINE, "Delete line"),
+            (keybinds.KB_UNDO, "Undo"),
+            (keybinds.KB_SEEK_FWD, f"Seek forward {int(keybinds.SEEK_SMALL)}s"),
+            (keybinds.KB_SEEK_BACK, f"Seek back {int(keybinds.SEEK_SMALL)}s"),
+            (keybinds.KB_SEEK_FWD_LARGE, f"Seek forward {int(keybinds.SEEK_LARGE)}s"),
+            (keybinds.KB_SEEK_BACK_LARGE, f"Seek back {int(keybinds.SEEK_LARGE)}s"),
+            (keybinds.KB_NUDGE_FINE_FWD, f"Nudge +{int(keybinds.NUDGE_FINE * 1000)}ms"),
+            (
+                keybinds.KB_NUDGE_FINE_BACK,
+                f"Nudge \u2212{int(keybinds.NUDGE_FINE * 1000)}ms",
+            ),
+            (keybinds.KB_NUDGE_MED_FWD, f"Nudge +{int(keybinds.NUDGE_MED * 1000)}ms"),
+            (
+                keybinds.KB_NUDGE_MED_BACK,
+                f"Nudge \u2212{int(keybinds.NUDGE_MED * 1000)}ms",
+            ),
+            (keybinds.KB_NUDGE_ROUGH_FWD, f"Nudge +{int(keybinds.NUDGE_ROUGH)}s"),
+            (keybinds.KB_NUDGE_ROUGH_BACK, f"Nudge \u2212{int(keybinds.NUDGE_ROUGH)}s"),
         ],
     ),
 ]
@@ -215,17 +181,18 @@ class HelpModal(ModalScreen):
 
     BINDINGS = [
         Binding("escape", "dismiss", "Close", priority=True),
-        Binding(KB_HELP, "dismiss", "", priority=True, show=False),
-        Binding(KB_CONFIG, "dismiss", "", priority=True, show=False),
+        Binding(keybinds.KB_HELP, "dismiss", "", priority=True, show=False),
+        Binding(keybinds.KB_CONFIG, "dismiss", "", priority=True, show=False),
     ]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="outer"):
             yield Label("Keybindings", id="title-bar")
-            yield Label(
-                f"[#606060]Esc / {fmt_key(KB_HELP)} / {fmt_key(KB_CONFIG)} to close[/]",
-                id="close-hint",
+            _close = (
+                f"[#606060]Esc / {fmt_key(keybinds.KB_HELP)}"
+                f" / {fmt_key(keybinds.KB_CONFIG)} to close[/]"
             )
+            yield Label(_close, id="close-hint")
             with Horizontal(id="columns"):
                 yield Static(_LEFT_TEXT, classes="col", id="col-left")
                 yield Static(_RIGHT_TEXT, classes="col", id="col-right")

@@ -14,43 +14,19 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView, TextArea
 
-from ..keybinds import (
-    KB_DELETE_LINE,
-    KB_EDIT_LINE,
-    KB_INSERT_LINE,
-    KB_MERGE_LINE,
-    KB_NUDGE_FINE_BACK,
-    KB_NUDGE_FINE_FWD,
-    KB_NUDGE_MED_BACK,
-    KB_NUDGE_MED_FWD,
-    KB_NUDGE_ROUGH_BACK,
-    KB_NUDGE_ROUGH_FWD,
-    KB_PLAY_PAUSE,
-    KB_SEEK_BACK,
-    KB_SEEK_BACK_LARGE,
-    KB_SEEK_FWD,
-    KB_SEEK_FWD_LARGE,
-    KB_SEEK_TO_LINE,
-    KB_STAMP_LINE,
-    KB_UNDO,
-    NUDGE_FINE,
-    NUDGE_MED,
-    NUDGE_ROUGH,
-    SEEK_LARGE,
-    SEEK_SMALL,
-)
+from .. import keybinds
 from ..lrc import LRCLine, active_line_index, parse, serialize
 from ._fast_list_view import FastListView
 from .edit_line_modal import EditLineModal, EditLineResult
 
 # key name → nudge delta mapping (uses event.key, consistent with all other bindings).
 _KEY_NUDGE: dict[str, float] = {
-    KB_NUDGE_FINE_BACK: -NUDGE_FINE,
-    KB_NUDGE_FINE_FWD: +NUDGE_FINE,
-    KB_NUDGE_MED_BACK: -NUDGE_MED,
-    KB_NUDGE_MED_FWD: +NUDGE_MED,
-    KB_NUDGE_ROUGH_BACK: -NUDGE_ROUGH,
-    KB_NUDGE_ROUGH_FWD: +NUDGE_ROUGH,
+    keybinds.KB_NUDGE_FINE_BACK: -keybinds.NUDGE_FINE,
+    keybinds.KB_NUDGE_FINE_FWD: +keybinds.NUDGE_FINE,
+    keybinds.KB_NUDGE_MED_BACK: -keybinds.NUDGE_MED,
+    keybinds.KB_NUDGE_MED_FWD: +keybinds.NUDGE_MED,
+    keybinds.KB_NUDGE_ROUGH_BACK: -keybinds.NUDGE_ROUGH,
+    keybinds.KB_NUDGE_ROUGH_FWD: +keybinds.NUDGE_ROUGH,
 }
 
 _EMPTY_HINT = "Select a file and press Enter to load"
@@ -478,34 +454,42 @@ class LyricsEditor(Widget):
         key = event.key
 
         # Playback controls — mirror waveform pane so you don't have to switch panes
-        if key == KB_PLAY_PAUSE:
+        if key == keybinds.KB_PLAY_PAUSE:
             event.stop()
             self.post_message(self.PlayPauseRequested())
             return
-        elif key == KB_SEEK_FWD:
+        elif key == keybinds.KB_SEEK_FWD:
             event.stop()
-            self.post_message(self.SeekRequested(max(0.0, self._current_position + SEEK_SMALL)))
+            self.post_message(
+                self.SeekRequested(max(0.0, self._current_position + keybinds.SEEK_SMALL))
+            )
             return
-        elif key == KB_SEEK_BACK:
+        elif key == keybinds.KB_SEEK_BACK:
             event.stop()
-            self.post_message(self.SeekRequested(max(0.0, self._current_position - SEEK_SMALL)))
+            self.post_message(
+                self.SeekRequested(max(0.0, self._current_position - keybinds.SEEK_SMALL))
+            )
             return
-        elif key == KB_SEEK_FWD_LARGE:
+        elif key == keybinds.KB_SEEK_FWD_LARGE:
             event.stop()
-            self.post_message(self.SeekRequested(max(0.0, self._current_position + SEEK_LARGE)))
+            self.post_message(
+                self.SeekRequested(max(0.0, self._current_position + keybinds.SEEK_LARGE))
+            )
             return
-        elif key == KB_SEEK_BACK_LARGE:
+        elif key == keybinds.KB_SEEK_BACK_LARGE:
             event.stop()
-            self.post_message(self.SeekRequested(max(0.0, self._current_position - SEEK_LARGE)))
+            self.post_message(
+                self.SeekRequested(max(0.0, self._current_position - keybinds.SEEK_LARGE))
+            )
             return
 
-        if key == KB_SEEK_TO_LINE:
+        if key == keybinds.KB_SEEK_TO_LINE:
             event.stop()
             if 0 <= self._cursor_idx < len(self._lines):
                 ts = self._lines[self._cursor_idx].timestamp
                 self.post_message(self.SeekRequested(ts))
 
-        elif key == KB_STAMP_LINE:
+        elif key == keybinds.KB_STAMP_LINE:
             event.stop()
             if 0 <= self._cursor_idx < len(self._lines):
                 self._save_undo()
@@ -520,7 +504,7 @@ class LyricsEditor(Widget):
                 self._refresh_active_style()
                 self._set_cursor(self._cursor_idx)
 
-        elif key == KB_UNDO:
+        elif key == keybinds.KB_UNDO:
             event.stop()
             self._apply_undo()
 
@@ -528,19 +512,19 @@ class LyricsEditor(Widget):
             event.stop()
             self._nudge(self._cursor_idx, _KEY_NUDGE[key])
 
-        elif key == KB_DELETE_LINE:
+        elif key == keybinds.KB_DELETE_LINE:
             event.stop()
             self._delete(self._cursor_idx)
 
-        elif key == KB_MERGE_LINE:
+        elif key == keybinds.KB_MERGE_LINE:
             event.stop()
             self._merge(self._cursor_idx)
 
-        elif key == KB_INSERT_LINE:
+        elif key == keybinds.KB_INSERT_LINE:
             event.stop()
             self._insert_blank(self._cursor_idx)
 
-        elif key == KB_EDIT_LINE:
+        elif key == keybinds.KB_EDIT_LINE:
             event.stop()
             if self._is_playing:
                 self.post_message(self.StopPlaybackRequested())

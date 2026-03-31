@@ -8,22 +8,9 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Label, Static
 
+from .. import keybinds
 from ..audio import waveform as wf
 from ..audio.player import Player
-from ..keybinds import (
-    KB_PLAY_PAUSE,
-    KB_SEEK_BACK,
-    KB_SEEK_BACK_LARGE,
-    KB_SEEK_FWD,
-    KB_SEEK_FWD_LARGE,
-    KB_VOL_DOWN,
-    KB_VOL_UP,
-    KB_ZOOM_IN,
-    KB_ZOOM_OUT,
-    SEEK_LARGE,
-    SEEK_SMALL,
-    VOL_STEP,
-)
 
 ZOOM_STEP = 5.0
 ZOOM_MIN = 5.0
@@ -208,33 +195,33 @@ class WaveformPane(Widget):
 
     def on_key(self, event) -> None:
         key = event.key
-        if key == KB_PLAY_PAUSE:
+        if key == keybinds.KB_PLAY_PAUSE:
             event.stop()
             self._player.toggle()
-        elif key == KB_SEEK_FWD:
+        elif key == keybinds.KB_SEEK_FWD:
             event.stop()
-            self._seek(SEEK_SMALL)
-        elif key == KB_SEEK_BACK:
+            self._seek(keybinds.SEEK_SMALL)
+        elif key == keybinds.KB_SEEK_BACK:
             event.stop()
-            self._seek(-SEEK_SMALL)
-        elif key == KB_SEEK_FWD_LARGE:
+            self._seek(-keybinds.SEEK_SMALL)
+        elif key == keybinds.KB_SEEK_FWD_LARGE:
             event.stop()
-            self._seek(SEEK_LARGE)
-        elif key == KB_SEEK_BACK_LARGE:
+            self._seek(keybinds.SEEK_LARGE)
+        elif key == keybinds.KB_SEEK_BACK_LARGE:
             event.stop()
-            self._seek(-SEEK_LARGE)
-        elif key == KB_ZOOM_IN:
+            self._seek(-keybinds.SEEK_LARGE)
+        elif key == keybinds.KB_ZOOM_IN:
             event.stop()
             self.set_zoom(self._zoom - ZOOM_STEP)
-        elif key == KB_ZOOM_OUT:
+        elif key == keybinds.KB_ZOOM_OUT:
             event.stop()
             self.set_zoom(self._zoom + ZOOM_STEP)
-        elif key == KB_VOL_UP:
+        elif key == keybinds.KB_VOL_UP:
             event.stop()
-            self.set_volume(self._volume + VOL_STEP)
-        elif key == KB_VOL_DOWN:
+            self.set_volume(self._volume + keybinds.VOL_STEP)
+        elif key == keybinds.KB_VOL_DOWN:
             event.stop()
-            self.set_volume(self._volume - VOL_STEP)
+            self.set_volume(self._volume - keybinds.VOL_STEP)
 
     def _seek(self, delta: float) -> None:
         target = max(0.0, self._position + delta)

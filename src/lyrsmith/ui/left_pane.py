@@ -10,7 +10,7 @@ from textual.timer import Timer
 from textual.widget import Widget
 from textual.worker import get_current_worker
 
-from ..keybinds import KB_TRANSCRIBE
+from .. import keybinds
 from ..metadata.tags import read_info
 from .file_browser import FileBrowser
 from .file_info import FileInfoPanel
@@ -98,7 +98,7 @@ class LeftPane(Widget):
     # ------------------------------------------------------------------
 
     def on_key(self, event) -> None:
-        if event.key == KB_TRANSCRIBE:
+        if event.key == keybinds.KB_TRANSCRIBE:
             event.stop()
             self.post_message(self.TranscribeRequested())
 

@@ -8,8 +8,8 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
+from .. import keybinds
 from ..config import Config
-from ..keybinds import KB_CONFIG, KB_HELP
 from .bottom_bar import fmt_key
 
 _FIELD_DESCRIPTIONS: dict[str, str] = {
@@ -131,8 +131,8 @@ class ConfigModal(ModalScreen[Config | None]):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", priority=True),
-        Binding(KB_CONFIG, "cancel", "", priority=True, show=False),
-        Binding(KB_HELP, "cancel", "", priority=True, show=False),
+        Binding(keybinds.KB_CONFIG, "cancel", "", priority=True, show=False),
+        Binding(keybinds.KB_HELP, "cancel", "", priority=True, show=False),
         Binding("ctrl+s", "save_config", "Save", priority=True, show=False),
     ]
 
@@ -148,7 +148,7 @@ class ConfigModal(ModalScreen[Config | None]):
             yield Label("Config", id="title-bar")
             yield Label(
                 f"[#606060]Ctrl+S to save  "
-                f"{fmt_key(KB_HELP)}/{fmt_key(KB_CONFIG)}/Esc to cancel[/]",
+                f"{fmt_key(keybinds.KB_HELP)}/{fmt_key(keybinds.KB_CONFIG)}/Esc to cancel[/]",
                 id="hint",
             )
             yield Label("", id="error-label")
