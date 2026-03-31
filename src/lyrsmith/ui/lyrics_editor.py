@@ -9,6 +9,8 @@ Three modes:
 
 from __future__ import annotations
 
+from collections import deque
+
 from textual.app import ComposeResult
 from textual.message import Message
 from textual.widget import Widget
@@ -219,8 +221,7 @@ class LyricsEditor(Widget):
         self._is_dirty: bool = False
         self._loading: bool = False  # suppresses TextArea.Changed during load_text()
         self._current_position: float = 0.0
-        self._undo_lines: list[LRCLine] | None = None
-        self._undo_cursor: int = 0
+        self._undo_stack: deque[tuple[list[LRCLine], int]] = deque(maxlen=50)
         self._list_items: list[ListItem] = []
 
     # ------------------------------------------------------------------
@@ -388,23 +389,25 @@ class LyricsEditor(Widget):
             lv.scroll_y = new_top
 
     def _save_undo(self) -> None:
-        """Snapshot current lines + cursor for single-level undo."""
-        # list(l.words) is a shallow copy: WordTiming contains only immutable
-        # primitive fields (str, float) and is never mutated in place — only
-        # the list itself is ever replaced.  Shared WordTiming references are
-        # therefore safe and a deep copy would be wasteful.
-        self._undo_lines = [
+        """Push a snapshot of current lines + cursor onto the undo stack (maxlen=50).
+
+        list(l.words) is a shallow copy: WordTiming contains only immutable
+        primitive fields (str, float) and is never mutated in place — only
+        the list itself is ever replaced.  Shared WordTiming references are
+        therefore safe and a deep copy would be wasteful.
+        """
+        snapshot = [
             LRCLine(l.timestamp, l.text, end=l.end, words=list(l.words)) for l in self._lines
         ]
-        self._undo_cursor = self._cursor_idx
+        self._undo_stack.append((snapshot, self._cursor_idx))
 
     def _apply_undo(self) -> None:
-        if self._undo_lines is None:
+        if not self._undo_stack:
             return
-        self._lines = self._undo_lines
-        self._undo_lines = None
+        lines, cursor = self._undo_stack.pop()
+        self._lines = lines
         self._refresh_list()
-        self._set_cursor(self._undo_cursor)
+        self._set_cursor(cursor)
         self._mark_dirty()
 
     def _set_cursor(self, idx: int) -> None:

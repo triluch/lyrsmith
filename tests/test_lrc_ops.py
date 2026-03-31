@@ -392,7 +392,7 @@ class TestUndo:
             async with _EditorApp().run_test(headless=True) as pilot:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc("[00:01.00]Only")
-                assert ed._undo_lines is None
+                assert len(ed._undo_stack) == 0
                 ed._apply_undo()  # must not crash
                 assert len(ed._lines) == 1
 
@@ -448,10 +448,11 @@ class TestUndo:
                 ed._save_undo()
                 # Replace the live line's words list (as a real operation would).
                 ed._lines[0].words = []
-                assert ed._undo_lines is not None
+                assert len(ed._undo_stack) > 0
                 # Snapshot must still hold the original word.
-                assert len(ed._undo_lines[0].words) == 1
-                assert ed._undo_lines[0].words[0].word == " Hi"
+                snapshot_lines, _ = ed._undo_stack[-1]
+                assert len(snapshot_lines[0].words) == 1
+                assert snapshot_lines[0].words[0].word == " Hi"
 
         _run(_impl())
 
@@ -465,8 +466,9 @@ class TestUndo:
                 ed._lines = [LRCLine(0.5, "Hi", words=[w])]
                 ed._mode = "lrc"
                 ed._save_undo()
-                assert ed._undo_lines is not None
-                ed._undo_lines[0].words.append(_wt(" extra", 9.0, 9.1))
+                assert len(ed._undo_stack) > 0
+                snapshot_lines, _ = ed._undo_stack[-1]
+                snapshot_lines[0].words.append(_wt(" extra", 9.0, 9.1))
                 assert len(ed._lines[0].words) == 1  # live lines unchanged
 
         _run(_impl())
