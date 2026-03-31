@@ -428,3 +428,54 @@ class TestPromptWorkflow:
                 assert captured.get("initial_prompt") == "via ctrl-u"
 
         asyncio.run(_impl())
+
+    def test_ctrl_u_opens_modal_when_plain_text_editor_focused(self, make_app, tmp_path):
+        """Regression: ctrl+u was swallowed by the plain-text TextArea instead of
+        opening the PromptModal. priority=True on the binding fixes this."""
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "song.mp3")
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import TextArea as _TA
+
+                app = pilot.app
+                app._loaded_path = audio
+                ed = app.query_one(LyricsEditor)
+                ed.load_plain("some plain lyrics")
+                await pilot.pause()
+                app.query_one("#plain-area", _TA).focus()
+                await pilot.pause()
+                await pilot.press("ctrl+u")
+                await pilot.pause()
+                assert isinstance(app.screen, PromptModal), (
+                    "ctrl+u should open PromptModal even when plain-text TextArea has focus"
+                )
+                await pilot.press("escape")
+                await pilot.pause()
+
+        asyncio.run(_impl())
+
+    def test_ctrl_u_in_modal_textarea_submits_not_opens_second_modal(self, make_app, tmp_path):
+        """Regression: with priority=True on the app binding, ctrl+u inside the
+        PromptModal's own TextArea was pushing a second PromptModal on top instead
+        of submitting. action_show_prompt now forwards to action_submit when a
+        PromptModal is already the current screen."""
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "song.mp3")
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._loaded_path = audio
+                app.action_show_prompt()
+                await pilot.pause()
+                assert isinstance(app.screen, PromptModal)
+                await pilot.press("ctrl+u")
+                await pilot.pause()
+                assert not isinstance(app.screen, PromptModal), (
+                    "ctrl+u inside PromptModal should submit, not push a second modal"
+                )
+                assert len(app.screen_stack) == 1
+
+        asyncio.run(_impl())

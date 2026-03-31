@@ -158,7 +158,7 @@ class LyrsmithApp(App):
         Binding(KB_SAVE, "save", "Save", show=False),
         Binding(KB_DISCARD_RELOAD, "discard_reload", "Reload", show=False),
         Binding(KB_TRANSCRIBE, "transcribe", "Transcribe", show=False),
-        Binding(KB_PROMPT, "show_prompt", "Prompt", show=False),
+        Binding(KB_PROMPT, "show_prompt", "Prompt", show=False, priority=True),
         Binding(KB_NEXT_MODEL, "next_model", "Model", show=False),
         Binding(KB_NEXT_LANG, "next_lang", "Language", show=False),
         Binding(KB_HELP, "show_help", "Help", show=False),
@@ -383,6 +383,12 @@ class LyrsmithApp(App):
         )
 
     def action_show_prompt(self) -> None:
+        # priority=True on the binding means this fires even when a PromptModal
+        # is already open and focus is in its TextArea. Forward to submit instead
+        # of pushing a second modal on top.
+        if isinstance(self.screen, PromptModal):
+            self.screen.action_submit()
+            return
         if self._loaded_path is None:
             self._w_top.set_status("No file loaded")
             return
