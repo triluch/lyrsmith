@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
+import threading
 import traceback
 from pathlib import Path
 
@@ -21,6 +24,7 @@ from .keybinds import (
     KB_HELP,
     KB_NEXT_LANG,
     KB_NEXT_MODEL,
+    KB_PROMPT,
     KB_QUIT,
     KB_SAVE,
     KB_TRANSCRIBE,
@@ -42,9 +46,47 @@ from .ui.file_browser import FileBrowser
 from .ui.help_modal import HelpModal
 from .ui.left_pane import LeftPane
 from .ui.lyrics_editor import LyricsEditor
+from .ui.prompt_modal import PromptModal
 from .ui.top_bar import TopBar
 from .ui.unsaved_modal import UnsavedModal
 from .ui.waveform_pane import WaveformPane
+
+
+def _copy_to_system_clipboard(text: str) -> None:
+    """Copy *text* to the OS clipboard via system tools.
+
+    Tries wl-copy (Wayland), then xclip and xsel (X11).  Silently ignores
+    failures so a missing tool never crashes the UI.  Textual's built-in
+    copy_to_clipboard uses OSC 52, which not all terminals honour.
+    """
+    if os.environ.get("WAYLAND_DISPLAY"):
+        try:
+            subprocess.run(
+                ["wl-copy"],
+                input=text.encode(),
+                check=True,
+                timeout=2,
+                capture_output=True,
+            )
+            return
+        except Exception:
+            pass
+
+    for cmd in (
+        ["xclip", "-selection", "clipboard"],
+        ["xsel", "--clipboard", "--input"],
+    ):
+        try:
+            subprocess.run(
+                cmd,
+                input=text.encode(),
+                check=True,
+                timeout=2,
+                capture_output=True,
+            )
+            return
+        except Exception:
+            pass
 
 
 class IndicatorSegment(Widget):
@@ -101,6 +143,14 @@ class LyrsmithApp(App):
     .ind-left  { width: 25%; min-width: 22; max-width: 42; }
     .ind-wave  { width: 14; }
     .ind-edit  { width: 1fr; }
+
+    /* Move toasts to top-right instead of the default bottom-right. */
+    ToastRack {
+        dock: top;
+        align: right top;
+        margin-top: 1;
+        margin-bottom: 0;
+    }
     """
 
     BINDINGS = [
@@ -108,6 +158,7 @@ class LyrsmithApp(App):
         Binding(KB_SAVE, "save", "Save", show=False),
         Binding(KB_DISCARD_RELOAD, "discard_reload", "Reload", show=False),
         Binding(KB_TRANSCRIBE, "transcribe", "Transcribe", show=False),
+        Binding(KB_PROMPT, "show_prompt", "Prompt", show=False),
         Binding(KB_NEXT_MODEL, "next_model", "Model", show=False),
         Binding(KB_NEXT_LANG, "next_lang", "Language", show=False),
         Binding(KB_HELP, "show_help", "Help", show=False),
@@ -121,6 +172,7 @@ class LyrsmithApp(App):
         self._loaded_path: Path | None = None
         self._pending_load: Path | None = None
         self._pending_quit: bool = False
+        self._whisper_prompt: str = ""
         self._player = Player(on_position=self._on_position_cb)
 
     # ------------------------------------------------------------------
@@ -201,6 +253,7 @@ class LyrsmithApp(App):
 
     def _do_load(self, path: Path) -> None:
         self._loaded_path = path
+        self._whisper_prompt = ""
         info = read_info(path)
         lyrics_text = read_lyrics(path)
 
@@ -327,6 +380,27 @@ class LyrsmithApp(App):
             exclusive=True,
         )
 
+    def action_show_prompt(self) -> None:
+        if self._loaded_path is None:
+            self._w_top.set_status("No file loaded")
+            return
+        self.push_screen(
+            PromptModal(self._whisper_prompt),
+            callback=self._prompt_modal_done,
+        )
+
+    def _prompt_modal_done(self, prompt: str | None) -> None:
+        """Called when PromptModal closes. None = cancelled; str = submit."""
+        if prompt is None:
+            return
+        self._whisper_prompt = prompt
+        if self._loaded_path is not None:
+            self.run_worker(
+                self._run_transcription(self._loaded_path, prompt=prompt or None),
+                name="transcribe",
+                exclusive=True,
+            )
+
     def action_next_model(self) -> None:
         models = AVAILABLE_MODELS
         try:
@@ -401,7 +475,7 @@ class LyrsmithApp(App):
             self.push_screen(ErrorModal("Save failed", traceback.format_exc()))
             return False
 
-    async def _run_transcription(self, path: Path) -> None:
+    async def _run_transcription(self, path: Path, prompt: str | None = None) -> None:
         loop = asyncio.get_running_loop()
 
         def _progress(msg: str) -> None:
@@ -442,6 +516,7 @@ class LyrsmithApp(App):
                     on_language_detected=_on_lang_detected,
                     vad_threshold=vad_threshold,
                     vad_min_silence_ms=vad_min_silence_ms,
+                    initial_prompt=prompt,
                 ),
             )
         except Exception:
@@ -560,3 +635,57 @@ class LyrsmithApp(App):
 
     def on_left_pane_transcribe_requested(self, _event: LeftPane.TranscribeRequested) -> None:
         self.action_transcribe()
+
+    # ------------------------------------------------------------------
+    # App focus — keep widget focus state intact when terminal background
+    # ------------------------------------------------------------------
+
+    async def _on_app_blur(self, event) -> None:
+        """Suppress Textual's default blur behaviour.
+
+        By default Textual clears the focused widget on AppBlur and tries to
+        restore it on AppFocus.  For a music/lyrics editor that runs in the
+        background this is unnecessary and causes a visible focus-loss flash
+        every time the user alt-tabs or switches terminal tabs.
+
+        prevent_default() stops the MRO walk in _get_dispatch_methods before
+        App._on_app_blur runs, so app_focus is never set to False and the
+        focused widget is never cleared.
+        """
+        event.prevent_default()
+
+    # ------------------------------------------------------------------
+    # Selection → clipboard
+    # ------------------------------------------------------------------
+
+    def on_text_selected(self) -> None:
+        """Auto-copy screen-level drag selection to clipboard on mouse-up.
+
+        TextSelected bubbles from Screen on every MouseUp.  The selection
+        is populated by _watch__select_end during mouse-move events, so it
+        is already settled by the time this handler fires.  Plain clicks
+        clear the selection before the event is posted, so get_selected_text
+        returns None for them.
+        """
+        text = self.screen.get_selected_text()
+        if text:
+            threading.Thread(target=_copy_to_system_clipboard, args=(text,), daemon=True).start()
+            self.notify("Copied to clipboard", timeout=3)
+
+    def on_mouse_up(self) -> None:
+        """Copy TextArea selection to clipboard on mouse release.
+
+        Screen-level selection is handled by on_text_selected + call_after_refresh.
+        TextArea has its own selection mechanism and is explicitly excluded from
+        TextSelected events, so we handle it here instead.
+        """
+        from textual.widgets import TextArea
+
+        focused = self.focused
+        if isinstance(focused, TextArea):
+            text = focused.selected_text
+            if text:
+                threading.Thread(
+                    target=_copy_to_system_clipboard, args=(text,), daemon=True
+                ).start()
+                self.notify("Copied to clipboard", timeout=3)

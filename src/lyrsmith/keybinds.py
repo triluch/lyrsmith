@@ -53,6 +53,7 @@ KB_UNDO = "ctrl+z"
 KB_SAVE = "ctrl+s"
 KB_DISCARD_RELOAD = "ctrl+r"  # discard work copy, reload from tags
 KB_TRANSCRIBE = "ctrl+t"  # trigger whisper transcription
+KB_PROMPT = "ctrl+u"  # open whisper prompt editor
 KB_NEXT_MODEL = "ctrl+n"  # cycle whisper model  (ctrl+m = CR = Enter in terminals)
 KB_NEXT_LANG = "ctrl+l"  # cycle whisper language
 KB_QUIT = "ctrl+q"

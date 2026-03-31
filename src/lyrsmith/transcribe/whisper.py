@@ -160,6 +160,7 @@ class Transcriber:
         on_language_detected: Callable[[str], None] | None = None,
         vad_threshold: float = 0.0,
         vad_min_silence_ms: int = 500,
+        initial_prompt: str | None = None,
     ) -> list[LRCLine]:
         """Transcribe *path* and return one LRCLine per (post-processed) segment.
 
@@ -168,6 +169,8 @@ class Transcriber:
             the largest inter-word pause gap until each segment has at most
             this many words.  0 disables splitting.
         vad_threshold — Silero VAD speech probability threshold; 0 disables VAD.
+        initial_prompt — optional hint text passed to Whisper before the first
+            audio window; guides spelling, style, and vocabulary.
         """
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -186,6 +189,7 @@ class Transcriber:
                 if vad_threshold > 0
                 else None
             ),
+            initial_prompt=initial_prompt or None,
         )
         detected_lang: str = info.language if isinstance(info.language, str) else ""
         if on_language_detected:
