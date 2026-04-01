@@ -456,10 +456,12 @@ class LyrsmithApp(App):
             # Clear dirty flag without reloading — avoids resetting editor
             # position and losing the active lyric highlight during playback.
             self._w_editor.clear_dirty()
-            # Re-populate disk cache with the new lyrics type and refresh
-            # the browser filter so files gain/lose [LRC] status immediately.
+            # Re-populate disk cache with the new lyrics type, refresh the
+            # browser filter so files gain/lose [LRC] status immediately,
+            # and update the file-info panel at the bottom of the browser.
             read_info(self._loaded_path)
             self._w_left.query_one(FileBrowser).refresh_filter()
+            self._w_left.refresh_file_info(self._loaded_path)
             return True
         except Exception:
             self.push_screen(ErrorModal("Save failed", traceback.format_exc()))
@@ -637,9 +639,19 @@ class LyrsmithApp(App):
         idx = event.idx
 
         def _handle(result: EditLineResult | None) -> None:
-            self._w_editor.apply_edit(idx, result)
+            self._w_editor.apply_edit(idx, result, lang=self._lyrics_lang)
 
-        self.push_screen(EditLineModal(event.text, idx), callback=_handle)
+        line = self._w_editor.lrc_lines[idx]
+        self.push_screen(
+            EditLineModal(
+                event.text,
+                idx,
+                words=line.words,
+                lang=self._lyrics_lang,
+                line_ts=line.timestamp,
+            ),
+            callback=_handle,
+        )
 
     # ------------------------------------------------------------------
     # Zoom sync → save to config

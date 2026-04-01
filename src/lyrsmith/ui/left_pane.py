@@ -115,6 +115,20 @@ class LeftPane(Widget):
             event.stop()
             self.post_message(self.TranscribeRequested())
 
+    def refresh_file_info(self, path: Path) -> None:
+        """Re-read and display file info if the cursor is still on *path*.
+
+        Only updates the panel when the browser cursor hasn't moved away —
+        if the user has navigated to a different file we leave the panel
+        showing that file's info rather than clobbering it.
+        """
+        if self.query_one(FileBrowser).highlighted_path != path:
+            return
+        if self._info_timer is not None:
+            self._info_timer.stop()
+            self._info_timer = None
+        self._update_file_info(path)
+
     def set_loaded(self, path: Path | None) -> None:
         self.query_one(FileBrowser).set_loaded(path)
 

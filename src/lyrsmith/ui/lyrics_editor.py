@@ -18,6 +18,7 @@ from textual.widgets import Label, ListItem, ListView, TextArea
 
 from .. import keybinds
 from ..lrc import LRCLine, active_line_index, parse, serialize
+from ..word_align import reconcile_word_timings
 from ._fast_list_view import FastListView
 from .edit_line_modal import EditLineResult
 
@@ -597,11 +598,15 @@ class LyricsEditor(Widget):
             return
         self.post_message(self.EditLineRequested(idx, self._lines[idx].text))
 
-    def apply_edit(self, idx: int, result: EditLineResult | None) -> None:
+    def apply_edit(self, idx: int, result: EditLineResult | None, lang: str = "") -> None:
         """Apply the result returned by EditLineModal for the line at *idx*.
 
         Called by the app layer after the modal is dismissed.  Handles the
         three possible outcomes: cancel (no-op), save, and split.
+
+        *lang* is the ISO 639-2 language code used for syllable-based word
+        timing interpolation (e.g. 'eng', 'pol'); pass the loaded file's
+        detected language for best results.
         """
         if result is None or result.action == "cancel":
             return
@@ -610,20 +615,12 @@ class LyricsEditor(Widget):
             if result.text == self._lines[idx].text:
                 return  # nothing changed — leave undo buffer intact
             self._save_undo()
+            old_words = self._lines[idx].words
             self._lines[idx].text = result.text
-            # If the word count is unchanged, patch the word text in-place
-            # so timing is preserved (e.g. fixing a single typo).
-            # If the count changed, the alignment is stale — clear it so
-            # subsequent splits fall back to the gap/syllable heuristic.
-            # (end timestamp is always kept; it's the segment boundary.)
-            new_tokens = result.text.split()
-            existing = self._lines[idx].words
-            if new_tokens and len(new_tokens) == len(existing):
-                for w, tok in zip(existing, new_tokens):
-                    prefix = " " if w.word.startswith(" ") else ""
-                    w.word = prefix + tok
-            else:
-                self._lines[idx].words = []
+            # Reconcile word timing: preserves timings through edits that
+            # join, split, delete, or insert words rather than dropping
+            # them whenever the word count changes.
+            self._lines[idx].words = reconcile_word_timings(old_words, result.text, lang)
             self._mark_dirty()
             self._refresh_list()
             self._set_cursor(idx)

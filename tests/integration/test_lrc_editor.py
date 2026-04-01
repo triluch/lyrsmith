@@ -9,7 +9,7 @@ import pytest
 from lyrsmith.lrc import WordTiming
 from lyrsmith.ui.edit_line_modal import EditLineModal
 
-from ._helpers import _load_and_focus
+from ._helpers import _SAMPLE_LRC, _load_and_focus
 
 
 class TestLrcEditorInteractions:
@@ -250,7 +250,8 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
-    def test_edit_save_clears_word_data_when_word_count_changes(self, make_app):
+    def test_edit_save_reconciles_word_data_on_word_count_change(self, make_app):
+        """Inserting a word reconciles timing rather than dropping it entirely."""
         _factory, _ = make_app
 
         async def _impl():
@@ -270,7 +271,14 @@ class TestLrcEditorInteractions:
                 await pilot.press("enter")
                 await pilot.pause()
                 assert ed._lines[0].text == "Hello beautiful world"
-                assert ed._lines[0].words == []
+                words = ed._lines[0].words
+                # All three words should have timing; equal anchors keep exact times
+                assert len(words) == 3
+                assert words[0].start == pytest.approx(1.0)  # Hello unchanged
+                assert words[2].end == pytest.approx(2.0)  # World unchanged
+                # Inserted word fits between its neighbours
+                assert words[1].start >= words[0].end - 0.01
+                assert words[1].end <= words[2].start + 0.01
                 ed.clear_dirty()
                 await pilot.press("ctrl+q")
 
@@ -590,5 +598,119 @@ class TestLrcEditorInteractions:
                 self._assert_highlight_on(pilot, ed)
                 ed.clear_dirty()
                 await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+
+class TestEditModalTimingPreview:
+    """Integration tests for the edit modal timing preview area."""
+
+    async def _setup_with_words(self, pilot):
+        """Load sample LRC, navigate to editor, attach word timing to line 0."""
+        from lyrsmith.ui.lyrics_editor import LyricsEditor
+
+        ed = pilot.app.query_one(LyricsEditor)
+        ed.load_lrc(_SAMPLE_LRC)
+        await pilot.pause()
+        await pilot.press("tab")  # browser → waveform
+        await pilot.pause()
+        await pilot.press("tab")  # waveform → lrc-list
+        await pilot.pause()
+        # _SAMPLE_LRC line 0: "[00:01.00]First line"  (ts=1.0)
+        ed._lines[0].words = [
+            WordTiming(" First", 1.2, 1.5),
+            WordTiming(" line", 1.6, 1.9),
+        ]
+        return ed
+
+    def test_preview_hidden_when_no_word_data(self, make_app):
+        """Modal shows no timing preview when the line has no word timing data."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import Static
+
+                ed = await _load_and_focus(pilot)
+                # No words set — words list is empty
+                assert ed._lines[0].words == []
+                await pilot.press("e")
+                await pilot.pause()
+                preview = pilot.app.screen.query_one("#timing-preview", Static)
+                assert "hidden" in preview.classes
+
+        asyncio.run(_impl())
+
+    def test_preview_shown_on_open_with_word_data(self, make_app):
+        """Modal shows timing preview on mount when word timing data exists."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import Static
+
+                await self._setup_with_words(pilot)
+                await pilot.press("e")
+                await pilot.pause()
+                preview = pilot.app.screen.query_one("#timing-preview", Static)
+                assert "hidden" not in preview.classes
+
+        asyncio.run(_impl())
+
+    def test_preview_uses_relative_times(self, make_app):
+        """Preview times are relative to the line timestamp, shown in seconds only."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import Static
+
+                await self._setup_with_words(pilot)
+                # line ts=1.0, word starts 1.2/1.6 → relative 0.20/0.60
+                await pilot.press("e")
+                await pilot.pause()
+                preview = pilot.app.screen.query_one("#timing-preview", Static)
+                text = preview.content.plain
+                assert "0.20" in text  # relative start of " First"
+                assert "0.50" in text  # relative end of " First"
+                assert "0.60" in text  # relative start of " line"
+                assert "0.90" in text  # relative end of " line"
+                # Absolute minutes must NOT appear
+                assert "1:0" not in text
+                assert "1:1" not in text
+
+        asyncio.run(_impl())
+
+    def test_preview_updates_after_edit_debounce(self, make_app):
+        """After the user stops typing the preview reflects the reconciled timings."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                from textual.widgets import Static
+
+                await self._setup_with_words(pilot)
+                await pilot.press("e")
+                await pilot.pause()
+
+                # Initial state: two words shown
+                preview = pilot.app.screen.query_one("#timing-preview", Static)
+                initial_text = preview.content.plain
+                assert "First" in initial_text
+                assert "line" in initial_text
+
+                # Delete " line" (5 chars) from end → single word "First"
+                for _ in range(5):
+                    await pilot.press("backspace")
+
+                # Wait for debounce (> 400 ms) then check the preview
+                await pilot.pause(0.5)
+                updated_text = preview.content.plain
+                # "line" was deleted; "First" keeps its original timing
+                assert "First" in updated_text
+                assert "0.20" in updated_text  # First start preserved
+                assert "0.50" in updated_text  # First end preserved
+                assert "line" not in updated_text
+                assert updated_text.count("[") == 1  # only one timing entry
 
         asyncio.run(_impl())

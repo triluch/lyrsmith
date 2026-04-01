@@ -315,5 +315,13 @@ class FileBrowser(Widget):
                 self._populate(self._path.parent)
 
     @property
+    def highlighted_path(self) -> Path | None:
+        """Return the path the cursor is currently on, or None for '..' / empty."""
+        lv = self.query_one("#browser-list", ListView)
+        if lv.index is None or lv.index >= len(self._entries):
+            return None
+        return self._entries[lv.index]  # None means '..' entry
+
+    @property
     def current_path(self) -> Path:
         return self._path

@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Label, TextArea
+from textual.timer import Timer
+from textual.widgets import Label, Static, TextArea
+
+from ..lrc import WordTiming
+from ..word_align import reconcile_word_timings
 
 
 @dataclass
@@ -31,13 +36,38 @@ def _split_at_cursor(text: str, col: int) -> tuple[str, str]:
     return first, second
 
 
+def _fmt_preview(words: list[WordTiming], line_ts: float = 0.0) -> Text:
+    """Format reconciled word timings as compact relative-time annotations.
+
+    Times are shown relative to *line_ts* and in seconds only (no minutes)
+    to keep the preview short — if a line spans more than a minute the
+    relative ordering of words still makes the timing obvious.
+    """
+    if not words:
+        return Text("no timing data", style="dim")
+    parts: list[str] = []
+    for w in words:
+        rel_s = w.start - line_ts
+        rel_e = w.end - line_ts
+        parts.append(f"{w.word.strip()} [{rel_s:.2f}→{rel_e:.2f}]")
+    return Text("  ".join(parts))
+
+
+# Debounce delay in seconds before the preview is recomputed
+_PREVIEW_DELAY = 0.4
+
+
 class EditLineModal(ModalScreen[EditLineResult]):
     """
     Tiny edit modal for a single LRC line.
 
     Enter        — save changes
-    Ctrl+Enter   — split at cursor, exit with two lines
+    Ctrl+K       — split at cursor, exit with two lines
     Escape       — cancel, no change
+
+    When word timing data is available for the line, a preview of the
+    reconciled word timings appears below the edit field after the user
+    stops typing for a moment.
     """
 
     DEFAULT_CSS = """
@@ -45,7 +75,7 @@ class EditLineModal(ModalScreen[EditLineResult]):
         align: center middle;
     }
     EditLineModal Vertical {
-        width: 70;
+        width: 90;
         height: auto;
         border: solid $accent;
         background: $surface;
@@ -63,6 +93,17 @@ class EditLineModal(ModalScreen[EditLineResult]):
         color: $text-muted;
         margin-top: 1;
     }
+    EditLineModal #timing-preview {
+        margin-top: 1;
+        height: auto;
+        max-height: 5;
+        color: $text-muted;
+        border-top: dashed $panel-darken-2;
+        padding-top: 1;
+    }
+    EditLineModal #timing-preview.hidden {
+        display: none;
+    }
     """
 
     BINDINGS = [
@@ -71,10 +112,21 @@ class EditLineModal(ModalScreen[EditLineResult]):
         Binding("ctrl+k", "split", "Split here", priority=True),
     ]
 
-    def __init__(self, text: str, line_idx: int) -> None:
+    def __init__(
+        self,
+        text: str,
+        line_idx: int,
+        words: list[WordTiming] | None = None,
+        lang: str = "",
+        line_ts: float = 0.0,
+    ) -> None:
         super().__init__()
         self._initial_text = text
         self._line_idx = line_idx
+        self._words: list[WordTiming] = words or []
+        self._lang = lang
+        self._line_ts = line_ts
+        self._debounce_timer: Timer | None = None
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -84,12 +136,38 @@ class EditLineModal(ModalScreen[EditLineResult]):
                 "Enter  Save    Ctrl+K  Split here    Esc  Cancel",
                 id="split-hint",
             )
+            yield Static("", id="timing-preview", classes="hidden")
 
     def on_mount(self) -> None:
         ta = self.query_one("#edit-area", TextArea)
         ta.focus()
-        # Move cursor to end of text
         ta.move_cursor(ta.document.end)
+        # Show initial preview if word timing data is available
+        if self._words:
+            self._update_preview()
+
+    # ------------------------------------------------------------------
+    # Debounced preview update
+    # ------------------------------------------------------------------
+
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        if not self._words:
+            return
+        if self._debounce_timer is not None:
+            self._debounce_timer.stop()
+        self._debounce_timer = self.set_timer(_PREVIEW_DELAY, self._update_preview)
+
+    def _update_preview(self) -> None:
+        self._debounce_timer = None
+        preview = self.query_one("#timing-preview", Static)
+        ta = self.query_one("#edit-area", TextArea)
+        current_text = ta.text.strip()
+        if not current_text or not self._words:
+            preview.add_class("hidden")
+            return
+        new_words = reconcile_word_timings(self._words, current_text, self._lang)
+        preview.update(_fmt_preview(new_words, self._line_ts))
+        preview.remove_class("hidden")
 
     # ------------------------------------------------------------------
     # Actions
