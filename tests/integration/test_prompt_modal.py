@@ -320,7 +320,7 @@ class TestPromptWorkflow:
         monkeypatch.setattr(_tr, "transcribe", lambda *a, **kw: _STUB_LINES)
         monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: None)
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:

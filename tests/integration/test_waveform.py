@@ -196,7 +196,7 @@ class TestWaveformTimestampSync:
         _factory, tmp_path = make_app
         _make_mp3(tmp_path / "song.mp3")
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: _SAMPLE_LRC)
 
         async def _impl():
             async with _factory(path=tmp_path).run_test(headless=True) as pilot:

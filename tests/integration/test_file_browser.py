@@ -19,7 +19,7 @@ class TestFileBrowser:
     def _setup_dir(self, tmp_path: Path, monkeypatch) -> Path:
         audio = _make_mp3(tmp_path / "song.mp3")
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: None)
         return audio
 
     def _setup_multi(self, tmp_path: Path, monkeypatch) -> list[Path]:
@@ -29,7 +29,7 @@ class TestFileBrowser:
             _make_mp3(tmp_path / "rock_ballad.mp3"),
         ]
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: None)
         return files
 
     @staticmethod

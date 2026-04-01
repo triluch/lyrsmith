@@ -30,7 +30,7 @@ class TestWordDataPersistence:
             monkeypatch,
             word_lines=[LRCLine(1.0, "First line", end=3.0, words=[w])],
         )
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: _SAMPLE_LRC)
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
@@ -56,7 +56,7 @@ class TestWordDataPersistence:
             monkeypatch,
             word_lines=[LRCLine(1.0, "First line", end=3.0, words=[w])],
         )
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: _SAMPLE_LRC)
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
@@ -88,7 +88,7 @@ class TestWordDataPersistence:
             monkeypatch,
             word_lines=[LRCLine(3.0, "Second line", end=5.0, words=[w])],
         )
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: _SAMPLE_LRC)
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:

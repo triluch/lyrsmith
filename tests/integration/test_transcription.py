@@ -158,7 +158,7 @@ class TestTranscription:
         monkeypatch.setattr(_tr, "transcribe", _stub_transcribe)
         monkeypatch.setattr(_tr, "load_model", lambda *a, **kw: None)
         monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
-        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: None)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: None)
 
         async def _impl():
             async with _factory(config=Config(whisper_language="auto")).run_test(
