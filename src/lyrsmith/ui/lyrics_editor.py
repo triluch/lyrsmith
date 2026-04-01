@@ -231,6 +231,7 @@ class LyricsEditor(Widget):
         self._cursor_idx: int = 0
         self._is_playing: bool = False
         self._is_dirty: bool = False
+        self._saved_hash: int = 0  # hash of serialized content at last save/load
         self._loading: bool = False  # suppresses TextArea.Changed during load_text()
         self._current_position: float = 0.0
         self._undo_stack: deque[tuple[list[LRCLine], int]] = deque(maxlen=50)
@@ -269,6 +270,7 @@ class LyricsEditor(Widget):
         self._lines = lines
         self._mode = "lrc"
         self._is_dirty = False
+        self._saved_hash = hash(serialize(meta, lines))
         self._cursor_idx = 0
         self._active_idx = -1
         self._refresh_list()
@@ -281,6 +283,7 @@ class LyricsEditor(Widget):
         self._plain_text = text
         self._mode = "plain"
         self._is_dirty = False
+        self._saved_hash = hash(text)
         ta = self.query_one("#plain-area", TextArea)
         ta.load_text(text)
         self._switch_mode("plain")
@@ -304,6 +307,10 @@ class LyricsEditor(Widget):
 
     def clear_dirty(self) -> None:
         """Mark editor as clean without reloading content (used after save)."""
+        if self._mode == "lrc":
+            self._saved_hash = hash(serialize(self._meta, self._lines))
+        else:
+            self._saved_hash = hash(self._plain_text)
         self._is_dirty = False
 
     def current_text(self) -> str:
@@ -669,6 +676,8 @@ class LyricsEditor(Widget):
             self._set_cursor(idx)
 
     def _mark_dirty(self) -> None:
-        self._is_dirty = True
         if self._mode == "lrc":
+            self._is_dirty = hash(serialize(self._meta, self._lines)) != self._saved_hash
             self.post_message(self.LinesChanged())
+        else:
+            self._is_dirty = True

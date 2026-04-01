@@ -222,3 +222,81 @@ class TestSaveFlow:
                 await pilot.press("ctrl+q")
 
         asyncio.run(_impl())
+
+    def test_stamp_then_undo_returns_to_clean(self, make_app):
+        """Undoing a stamp back to the saved state must clear the dirty flag."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = pilot.app.query_one(LyricsEditor)
+                ed.load_lrc(_SAMPLE_LRC)
+                await pilot.pause()
+                pilot.app.query_one("#lrc-list").focus()
+                await pilot.pause()
+
+                ed.update_position(4.5)
+                await pilot.press("t")
+                await pilot.pause()
+                assert ed.is_dirty
+
+                await pilot.press("ctrl+z")
+                await pilot.pause()
+                assert not ed.is_dirty
+
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_nudge_forward_then_back_returns_to_clean(self, make_app):
+        """Nudging a line forward then back to its original timestamp must clear dirty."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = pilot.app.query_one(LyricsEditor)
+                ed.load_lrc(_SAMPLE_LRC)
+                await pilot.pause()
+                pilot.app.query_one("#lrc-list").focus()
+                await pilot.pause()
+
+                await pilot.press("period")  # +10 ms
+                await pilot.pause()
+                assert ed.is_dirty
+
+                await pilot.press("comma")  # −10 ms — back to original
+                await pilot.pause()
+                assert not ed.is_dirty
+
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
+    def test_undo_to_saved_state_suppresses_unsaved_modal(self, make_app):
+        """ctrl+q after undo to saved state quits without showing UnsavedModal."""
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                ed = app.query_one(LyricsEditor)
+                ed.load_lrc(_SAMPLE_LRC)
+                await pilot.pause()
+                app.query_one("#lrc-list").focus()
+                await pilot.pause()
+
+                ed.update_position(4.5)
+                await pilot.press("t")
+                await pilot.pause()
+                assert ed.is_dirty
+
+                await pilot.press("ctrl+z")
+                await pilot.pause()
+                assert not ed.is_dirty
+
+                # action_quit_app would push UnsavedModal if dirty — it must not.
+                app.action_quit_app()
+                await pilot.pause()
+                assert not isinstance(app.screen, UnsavedModal)
+
+        asyncio.run(_impl())
