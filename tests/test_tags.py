@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from mutagen.id3 import ID3, USLT
 
 import lyrsmith.metadata.tags as _tags_mod
 from lyrsmith.lrc import LRCLine, WordTiming
@@ -20,6 +21,7 @@ from lyrsmith.metadata.tags import (
     _read_id3_uslt,
     _read_lyrics_raw,
     _read_vorbis_lyrics,
+    _write_id3_uslt,
     decode_word_data,
     encode_word_data,
     is_audio_file,
@@ -594,3 +596,116 @@ class TestReadWriteWordDataVorbis:
         f = MF(str(flac_file))
         keys_lower = {k.lower() for k in f.tags.keys()}
         assert WORD_DATA_TAG.lower() in keys_lower
+
+
+# ---------------------------------------------------------------------------
+# USLT language handling
+# ---------------------------------------------------------------------------
+
+_PLAIN_EN = "Just plain English lyrics"
+_LRC_EN = "[00:01.00]English line one\n[00:03.00]English line two\n"
+_LRC_PL = "[00:01.00]Polska pierwsza linia\n[00:03.00]Polska druga linia\n"
+_LRC_DE = "[00:01.00]Deutsche erste Zeile\n[00:03.00]Deutsche zweite Zeile\n"
+
+
+def _set_uslt(path: Path, frames: list[tuple[str, str, str]]) -> None:
+    """Write USLT frames to an MP3. Each tuple is (iso639_2_lang, desc, text)."""
+    tags = ID3(str(path))
+    tags.delall("USLT")
+    for lang, desc, text in frames:
+        tags.add(USLT(encoding=3, lang=lang, desc=desc, text=text))
+    tags.save(str(path))
+
+
+def _uslt_frames(path: Path) -> dict:
+    """Return all USLT frames from an MP3 keyed by their ID3 key."""
+    tags = ID3(str(path))
+    return {k: v for k, v in tags.items() if k.startswith("USLT")}
+
+
+class TestUsltRead:
+    def test_lrc_preferred_over_plain_when_both_present(self, mp3_file):
+        """When both plain and LRC USLT frames exist, the LRC one is returned."""
+        _set_uslt(mp3_file, [("eng", "", _PLAIN_EN), ("pol", "", _LRC_PL)])
+        result = _read_id3_uslt(mp3_file, lang_prefs=["en", "pl"])
+        assert result == _LRC_PL
+
+    def test_language_preference_among_multiple_lrc_frames(self, mp3_file):
+        """Among multiple LRC frames the one matching the first preferred lang wins."""
+        _set_uslt(mp3_file, [("eng", "", _LRC_EN), ("pol", "", _LRC_PL)])
+        assert _read_id3_uslt(mp3_file, lang_prefs=["pl", "en"]) == _LRC_PL
+        assert _read_id3_uslt(mp3_file, lang_prefs=["en", "pl"]) == _LRC_EN
+
+    def test_fallback_to_any_lrc_when_no_lang_matches(self, mp3_file):
+        """If no preferred language matches, any LRC frame is returned over plain."""
+        _set_uslt(mp3_file, [("deu", "", _LRC_DE), ("eng", "", _PLAIN_EN)])
+        result = _read_id3_uslt(mp3_file, lang_prefs=["en"])
+        # "en" matches the plain frame, but LRC takes priority
+        assert result == _LRC_DE
+
+    def test_plain_returned_when_no_lrc_exists(self, mp3_file):
+        """With no LRC frames available, falls back to plain text."""
+        _set_uslt(mp3_file, [("eng", "", _PLAIN_EN)])
+        assert _read_id3_uslt(mp3_file, lang_prefs=["en"]) == _PLAIN_EN
+
+    def test_no_lang_prefs_returns_first_frame(self, mp3_file):
+        """Passing no lang_prefs preserves existing single-frame behaviour."""
+        _set_uslt(mp3_file, [("eng", "", _LRC_EN)])
+        assert _read_id3_uslt(mp3_file) == _LRC_EN
+
+    def test_read_lyrics_passes_lang_prefs(self, mp3_file):
+        """read_lyrics public API propagates lang_prefs to _read_id3_uslt."""
+        _set_uslt(mp3_file, [("eng", "", _LRC_EN), ("pol", "", _LRC_PL)])
+        cache.invalidate(mp3_file)
+        assert read_lyrics(mp3_file, lang_prefs=["pl"]) == _LRC_PL
+        cache.invalidate(mp3_file)
+        assert read_lyrics(mp3_file, lang_prefs=["en"]) == _LRC_EN
+
+
+class TestUsltWrite:
+    def test_write_uses_provided_language(self, mp3_file):
+        """_write_id3_uslt stores the frame with the given ISO 639-2 lang."""
+        _write_id3_uslt(mp3_file, _LRC_PL, "pol")
+        frames = _uslt_frames(mp3_file)
+        assert len(frames) == 1
+        assert next(iter(frames.values())).lang == "pol"
+
+    def test_write_single_frame_in_single_frame_out_same_lang(self, mp3_file):
+        """Overwriting with the same language keeps exactly one frame."""
+        _set_uslt(mp3_file, [("eng", "", _PLAIN_EN)])
+        _write_id3_uslt(mp3_file, _LRC_EN, "eng")
+        frames = _uslt_frames(mp3_file)
+        assert len(frames) == 1
+        frame = next(iter(frames.values()))
+        assert frame.lang == "eng"
+        assert frame.text == _LRC_EN
+
+    def test_write_changes_lang_without_creating_second_frame(self, mp3_file):
+        """Writing with a different lang replaces the old frame — no duplicates."""
+        _set_uslt(mp3_file, [("eng", "", _PLAIN_EN)])
+        _write_id3_uslt(mp3_file, _LRC_PL, "pol")
+        frames = _uslt_frames(mp3_file)
+        assert len(frames) == 1
+        frame = next(iter(frames.values()))
+        assert frame.lang == "pol"
+        assert frame.text == _LRC_PL
+
+    def test_write_multiple_frames_in_single_frame_out(self, mp3_file):
+        """When multiple USLT frames exist, write produces exactly one."""
+        _set_uslt(mp3_file, [("eng", "", _LRC_EN), ("pol", "", _LRC_PL)])
+        _write_id3_uslt(mp3_file, _LRC_DE, "deu")
+        frames = _uslt_frames(mp3_file)
+        assert len(frames) == 1
+
+    def test_write_lyrics_public_api_converts_bcp47_to_iso639_2(self, mp3_file):
+        """write_lyrics with lang='pl' (BCP-47) stores 'pol' in the USLT frame."""
+        write_lyrics(mp3_file, _LRC_PL, lang="pl")
+        frames = _uslt_frames(mp3_file)
+        assert len(frames) == 1
+        assert next(iter(frames.values())).lang == "pol"
+
+    def test_write_lyrics_auto_uses_undetermined(self, mp3_file):
+        """lang='auto' (Whisper auto-detect) maps to ISO 639-2 'und'."""
+        write_lyrics(mp3_file, _LRC_EN, lang="auto")
+        frames = _uslt_frames(mp3_file)
+        assert next(iter(frames.values())).lang == "und"

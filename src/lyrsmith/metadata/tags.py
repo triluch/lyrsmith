@@ -14,11 +14,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import langcodes
 from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, TXXX, USLT, ID3NoHeaderError
 
 from ..lrc import LineEnrichment, LRCLine, WordTiming, is_lrc
 from .cache import FileInfo, LyricsType, cache
+
+
+def _lang_to_id3(lang: str) -> str:
+    """Convert a BCP-47 code (or 'auto') to an ISO 639-2 alpha-3 code for USLT.
+
+    'auto' (Whisper auto-detect) and anything unrecognised map to 'und'.
+    A caller passing an already-valid 3-char code (e.g. 'eng') passes through.
+    """
+    if lang.lower() == "auto":
+        return "und"
+    try:
+        return langcodes.Language.get(lang).to_alpha3()
+    except Exception:
+        return "und"
+
 
 # Only formats with reliable lyrics read/write support.
 # Files not matching this set are hidden in the file browser.
@@ -83,17 +99,34 @@ def read_info(path: Path) -> FileInfo:
     return info
 
 
-def read_lyrics(path: Path) -> str | None:
-    """Return raw lyrics string, served from warm cache where possible."""
+def read_lyrics(path: Path, lang_prefs: list[str] | None = None) -> str | None:
+    """Return raw lyrics string.
+
+    When *lang_prefs* is provided (BCP-47 codes in preference order) the cache
+    is bypassed so that language selection is applied fresh.  Without
+    *lang_prefs* the warm cache is used for performance.
+    """
+    if lang_prefs:
+        ext = path.suffix.lower()
+        if ext == ".mp3":
+            return _read_id3_uslt(path, lang_prefs=lang_prefs)
+        elif ext in _VORBIS_EXTS:
+            return _read_vorbis_lyrics(path)  # single-field; lang n/a
+        return None
     return read_info(path).lyrics_text
 
 
-def write_lyrics(path: Path, lyrics: str) -> None:
-    """Write lyrics tag. Format is inferred from the file extension."""
+def write_lyrics(path: Path, lyrics: str, lang: str = "und") -> None:
+    """Write lyrics tag. Format is inferred from the file extension.
+
+    *lang* accepts BCP-47 alpha-2 (e.g. 'en', 'pl'), ISO 639-2 alpha-3
+    (e.g. 'eng', 'pol'), 'auto', or 'und'.  Converted to ISO 639-2
+    internally for ID3 USLT frames; ignored for Vorbis formats.
+    """
     ext = path.suffix.lower()
     try:
         if ext == ".mp3":
-            _write_id3_uslt(path, lyrics)
+            _write_id3_uslt(path, lyrics, _lang_to_id3(lang))
         elif ext in _VORBIS_EXTS:
             _write_vorbis_lyrics(path, lyrics)
         else:
@@ -118,24 +151,65 @@ def _read_lyrics_raw(path: Path) -> str | None:
     return None
 
 
-def _read_id3_uslt(path: Path) -> str | None:
+def _select_uslt_frame(path: Path, lang_prefs: list[str] | None = None) -> tuple[str, str] | None:
+    """Return ``(text, iso639_2_lang)`` of the best USLT frame, or ``None``.
+
+    Selection priority:
+    1. Synced (LRC) frames before plain-text frames.
+    2. Among LRC frames, prefer the one whose lang matches the earliest entry
+       in *lang_prefs* (BCP-47 alpha-2 codes; "auto" is ignored).
+    3. If no lang matches, return the first LRC frame found.
+    4. If no LRC frames exist, apply the same preference order to plain frames.
+    """
     try:
         tags = ID3(path)
-        for key in tags.keys():
-            if key.startswith("USLT"):
-                return tags[key].text
+        frames = [tags[k] for k in tags.keys() if k.startswith("USLT")]
     except Exception:
-        pass
-    return None
+        return None
+    if not frames:
+        return None
+
+    lrc_frames = [f for f in frames if is_lrc(f.text)]
+    plain_frames = [f for f in frames if not is_lrc(f.text)]
+
+    def _pick(candidates: list) -> tuple[str, str] | None:
+        if not candidates:
+            return None
+        if lang_prefs:
+            id3_prefs = [_lang_to_id3(lp) for lp in lang_prefs if lp != "auto"]
+            for id3_lang in id3_prefs:
+                for f in candidates:
+                    if f.lang == id3_lang:
+                        return f.text, f.lang
+        return candidates[0].text, candidates[0].lang
+
+    return _pick(lrc_frames) or _pick(plain_frames)
 
 
-def _write_id3_uslt(path: Path, lyrics: str) -> None:
+def _read_id3_uslt(path: Path, lang_prefs: list[str] | None = None) -> str | None:
+    """Return lyrics text from the best matching USLT frame, or ``None``."""
+    result = _select_uslt_frame(path, lang_prefs)
+    return result[0] if result else None
+
+
+def read_uslt_lang(path: Path, lang_prefs: list[str] | None = None) -> str:
+    """Return the ISO 639-2 lang of the selected USLT frame, or 'und' if none."""
+    result = _select_uslt_frame(path, lang_prefs)
+    return result[1] if result else "und"
+
+
+def _write_id3_uslt(path: Path, lyrics: str, lang: str = "und") -> None:
+    """Write lyrics to a single USLT frame, replacing any existing frames.
+
+    *lang* should be an ISO 639-2 alpha-3 code (e.g. 'eng', 'pol').
+    Always produces exactly one USLT frame regardless of how many existed.
+    """
     try:
         tags = ID3(path)
     except ID3NoHeaderError:
         tags = ID3()
     tags.delall("USLT")
-    tags.add(USLT(encoding=3, lang="eng", desc="", text=lyrics))
+    tags.add(USLT(encoding=3, lang=lang, desc="", text=lyrics))
     tags.save(path)
 
 

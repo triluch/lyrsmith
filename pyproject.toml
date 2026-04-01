@@ -11,6 +11,7 @@ requires-python = ">=3.13"
 dependencies = [
     "av>=17.0.0",
     "faster-whisper>=1.2.1",
+    "langcodes>=3.5.1",
     "mutagen>=1.47.0",
     "numpy>=2.4.3",
     "platformdirs>=4.9.4",

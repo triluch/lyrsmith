@@ -21,8 +21,10 @@ from .config import save as save_config
 from .lrc import attach_word_data, is_lrc
 from .lrc import parse as parse_lrc
 from .metadata.tags import (
+    _lang_to_id3,
     read_info,
     read_lyrics,
+    read_uslt_lang,
     read_word_data,
     write_lyrics,
     write_word_data,
@@ -144,6 +146,7 @@ class LyrsmithApp(App):
         self._pending_load: Path | None = None
         self._pending_quit: bool = False
         self._whisper_prompt: str = ""
+        self._lyrics_lang: str = "und"  # ISO 639-2 lang for next save
         self._player = Player(on_position=self._on_position_cb)
 
     # ------------------------------------------------------------------
@@ -229,7 +232,10 @@ class LyrsmithApp(App):
         self._loaded_path = path
         self._whisper_prompt = ""
         info = read_info(path)
-        lyrics_text = read_lyrics(path)
+        lyrics_text = read_lyrics(path, lang_prefs=self._config.whisper_languages)
+        # Track the original tag lang so save preserves it.
+        # read_uslt_lang returns "und" if the file had no USLT frame.
+        self._lyrics_lang = read_uslt_lang(path, lang_prefs=self._config.whisper_languages)
 
         # Determine lyrics type
         lyrics_type: str | None = None
@@ -330,7 +336,7 @@ class LyrsmithApp(App):
     def action_discard_reload(self) -> None:
         if self._loaded_path is None:
             return
-        lyrics_text = read_lyrics(self._loaded_path)
+        lyrics_text = read_lyrics(self._loaded_path, lang_prefs=self._config.whisper_languages)
         if lyrics_text is None:
             self._w_editor.load_empty()
         else:
@@ -442,7 +448,7 @@ class LyrsmithApp(App):
             self._w_top.set_status("Nothing to save")
             return False
         try:
-            write_lyrics(self._loaded_path, text)
+            write_lyrics(self._loaded_path, text, lang=self._lyrics_lang)
             # Persist word timing data alongside lyrics.  write_word_data is
             # best-effort: errors are swallowed internally and never prevent save.
             write_word_data(self._loaded_path, self._w_editor.lrc_lines)
@@ -466,8 +472,11 @@ class LyrsmithApp(App):
         max_words = self._config.whisper_max_words_per_line
         vad_threshold = self._config.vad_threshold
         vad_min_silence_ms = self._config.vad_min_silence_ms
+        detected_lang: list[str] = []  # captures actual detected language from whisper
 
         def _on_lang_detected(lang: str) -> None:
+            if lang:
+                detected_lang[:] = [lang]  # capture for save-lang tracking
             if language in ("auto", None) and lang:
                 self.call_from_thread(self._w_top.set_language, f"auto ({lang})")
 
@@ -505,6 +514,11 @@ class LyrsmithApp(App):
 
         self._w_editor.load_lines({}, lines)
         self._w_editor.mark_dirty()
+        # Update save lang to the transcribed/detected language (never "auto").
+        if language != "auto":
+            self._lyrics_lang = _lang_to_id3(language)
+        elif detected_lang:
+            self._lyrics_lang = _lang_to_id3(detected_lang[0])
         self._w_top.set_status("Transcribed (unsaved)")
 
     # ------------------------------------------------------------------
