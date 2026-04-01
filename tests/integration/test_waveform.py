@@ -213,5 +213,3 @@ class TestWaveformTimestampSync:
                 assert wf._lrc_timestamps == pytest.approx([1.0, 3.0, 5.0, 7.0, 9.0])
 
         asyncio.run(_impl())
-
-        asyncio.run(_impl())

@@ -117,10 +117,12 @@ def _ts_of(ed, text: str) -> float:
 class TestMultiLevelUndo:
     """Multi-level undo: each Ctrl+Z undoes one step back through history."""
 
-    def _setup(self, pilot):
+    async def _setup(self, pilot):
         ed = pilot.app.query_one(LyricsEditor)
         ed.load_lrc(_SAMPLE_LRC)
+        await pilot.pause()
         pilot.app.query_one("#lrc-list").focus()
+        await pilot.pause()
         return ed
 
     def test_all_undo_saving_operations_are_individually_undoable(self, make_app):
@@ -145,8 +147,7 @@ class TestMultiLevelUndo:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = self._setup(pilot)
-                await pilot.pause()
+                ed = await self._setup(pilot)
 
                 assert len(ed._lines) == 5
                 assert _ts_of(ed, "First line") == pytest.approx(1.0)
@@ -222,8 +223,7 @@ class TestMultiLevelUndo:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = self._setup(pilot)
-                await pilot.pause()
+                ed = await self._setup(pilot)
 
                 assert ed._cursor_idx == 0
 

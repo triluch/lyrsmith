@@ -91,7 +91,9 @@ class TestLrcEditorInteractions:
                 line_identity = ed._lines[0]
 
                 await pilot.press("right_square_bracket")  # +1 s → 2 s
+                await pilot.pause()
                 await pilot.press("right_square_bracket")  # +1 s → 3.01 s (past 3 s)
+                await pilot.pause()
                 await pilot.press("right_square_bracket")  # +1 s → 4.01 s
                 await pilot.pause()
                 await pilot.pause()  # second pause lets call_after_refresh fire
