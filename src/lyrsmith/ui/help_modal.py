@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -129,8 +131,14 @@ def _render_col(sections: list[tuple[str, list[tuple[str, str]]]]) -> str:
     return "\n".join(lines)
 
 
-_LEFT_TEXT = _render_col(_LEFT_SECTIONS)
-_RIGHT_TEXT = _render_col(_RIGHT_SECTIONS)
+@lru_cache(maxsize=None)
+def _left_text() -> str:
+    return _render_col(_LEFT_SECTIONS)
+
+
+@lru_cache(maxsize=None)
+def _right_text() -> str:
+    return _render_col(_RIGHT_SECTIONS)
 
 
 class HelpModal(ModalScreen):
@@ -194,8 +202,8 @@ class HelpModal(ModalScreen):
             )
             yield Label(_close, id="close-hint")
             with Horizontal(id="columns"):
-                yield Static(_LEFT_TEXT, classes="col", id="col-left")
-                yield Static(_RIGHT_TEXT, classes="col", id="col-right")
+                yield Static(_left_text(), classes="col", id="col-left")
+                yield Static(_right_text(), classes="col", id="col-right")
 
     def on_mount(self) -> None:
         self.query_one("#col-left", Static).focus()

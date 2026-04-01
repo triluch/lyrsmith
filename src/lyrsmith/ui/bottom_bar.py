@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
+from textual.css.query import NoMatches
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Label
@@ -33,12 +36,6 @@ _DISPLAY: dict[str, str] = {
     "slash": "/",
     "f1": "F1",
     "f2": "F2",
-    "f3": "F3",
-    "f4": "F4",
-    "f5": "F5",
-    "f6": "F6",
-    "f7": "F7",
-    "f8": "F8",
     # Pseudo-key used as a display hint in the help screen only
     "a-z": "a-z / 0-9",
 }
@@ -89,6 +86,7 @@ def _kk(k1: str, k2: str, desc: str, between: str = "") -> str:
     return f"[{_KC}]{keys}[/] [{_DC}]{desc}[/]"
 
 
+@lru_cache(maxsize=None)
 def _build_hints() -> dict[str, str]:
     return {
         "browser": _SEP.join(
@@ -167,9 +165,6 @@ def _build_hints() -> dict[str, str]:
     }
 
 
-HINTS = _build_hints()
-
-
 # ------------------------------------------------------------------
 # Widget
 # ------------------------------------------------------------------
@@ -190,10 +185,10 @@ class BottomBar(Widget):
         yield Label("", id="hint-label")
 
     def watch_context(self, value: str) -> None:
-        text = HINTS.get(value, "")
+        text = _build_hints().get(value, "")
         try:
             self.query_one("#hint-label", Label).update(text)
-        except Exception:
+        except NoMatches:
             # Widget not yet composed or being torn down — safe to ignore.
             pass
 

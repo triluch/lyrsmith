@@ -105,4 +105,4 @@ class FastListView(ListView):
         try:
             self.app.stylesheet.update_nodes([self], animate=animate)
         except Exception:
-            pass
+            self.log.warning("update_node_styles failed", exc_info=True)

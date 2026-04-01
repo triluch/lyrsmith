@@ -85,7 +85,13 @@ class LeftPane(Widget):
             )
 
     def _warm_cache(self, files: list[Path]) -> None:
-        """Run in a thread: pre-populate the metadata cache for all files."""
+        """Run in a thread: pre-populate the metadata cache for all files.
+
+        No rate limiting or entry cap — for very large directories (1k+ files)
+        with long embedded lyrics this can be significant I/O.  Consider adding
+        a per-iteration sleep or capping at e.g. min(len(files), 50) if it
+        causes visible slowdowns on mechanical drives.
+        """
         worker = get_current_worker()
         for path in files:
             if worker.is_cancelled:

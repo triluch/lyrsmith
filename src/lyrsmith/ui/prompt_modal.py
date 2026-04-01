@@ -90,3 +90,7 @@ class PromptModal(ModalScreen[str | None]):
     def action_submit(self) -> None:
         ta = self.query_one("#prompt-area", TextArea)
         self.dismiss(ta.text)
+
+    def submit(self) -> None:
+        """Public entry point for external callers (e.g. app layer)."""
+        self.action_submit()

@@ -28,12 +28,13 @@ scripts/build_conjunctions.py.
 
 from __future__ import annotations
 
-import re
 from functools import lru_cache
 from importlib.resources import files as _pkg_files
 from typing import Protocol, runtime_checkable
 
 import pyphen
+
+from ..lrc import _NONWORD_RE
 
 # ---------------------------------------------------------------------------
 # Configuration (not exposed to the user; validated by experiment)
@@ -95,11 +96,8 @@ def _pyphen_dic(lang: str) -> pyphen.Pyphen | None:
     return None if fb is None else pyphen.Pyphen(lang=fb)
 
 
-_STRIP_PUNCT = re.compile(r"[^\w]", re.UNICODE)
-
-
 def _syllable_count(word_str: str, dic: pyphen.Pyphen | None) -> int:
-    w = _STRIP_PUNCT.sub("", word_str).lower()
+    w = _NONWORD_RE.sub("", word_str).lower()
     if not w:
         return 1
     if dic is None:
@@ -171,7 +169,7 @@ def best_split_index(words: list, lang: str) -> int:
     conj = conjunction_set(lang)
     if conj:
         for i in range(n - 1):
-            next_w = _STRIP_PUNCT.sub("", words[i + 1].word).lower()
+            next_w = _NONWORD_RE.sub("", words[i + 1].word).lower()
             if next_w in conj:
                 if abs(_split_time(words, i) - syl_mid_t) <= CONJ_TOLERANCE_S:
                     candidates.add(i)

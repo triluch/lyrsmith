@@ -139,7 +139,7 @@ def _join_lines(a: str, b: str) -> str:
         return a
     bwords = b.split()
     first_word = bwords[0] if bwords else ""
-    if first_word == "I" or (len(first_word) > 1 and first_word.isupper()):
+    if first_word == "I" or (len(first_word) > 1 and first_word.rstrip(".,!?").isupper()):
         return f"{a} {b}"
     return f"{a} {b[0].lower()}{b[1:]}"
 

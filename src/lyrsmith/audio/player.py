@@ -136,6 +136,9 @@ class Player:
                 time.sleep(0.05)
             if self._revive_stop.is_set():
                 return
+            # Restore pre-EOF pause state: if the user had paused near the end
+            # and sought into it, stay paused; if they were playing, stay paused
+            # too (rewinding to start automatically is rarely the right UX).
             self._mpv.pause = True
             # Let the position callback know we're back at the start
             if self.on_position is not None:

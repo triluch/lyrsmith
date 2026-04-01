@@ -286,7 +286,7 @@ class ConfigModal(ModalScreen[Config | None]):
 
             langs_raw = self._get("f-whisper-languages")
             whisper_languages = (
-                [l.strip() for l in langs_raw.split(",") if l.strip()]
+                [lang.strip() for lang in langs_raw.split(",") if lang.strip()]
                 if langs_raw
                 else list(self._cfg.whisper_languages)
             )

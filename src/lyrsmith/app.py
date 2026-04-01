@@ -12,7 +12,6 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widget import Widget
 
 from . import keybinds
 from .audio.decoder import decode_to_pcm
@@ -35,6 +34,7 @@ from .ui.edit_line_modal import EditLineModal, EditLineResult
 from .ui.error_modal import ErrorModal
 from .ui.file_browser import FileBrowser
 from .ui.help_modal import HelpModal
+from .ui.indicator_segment import IndicatorSegment
 from .ui.left_pane import LeftPane
 from .ui.lyrics_editor import LyricsEditor
 from .ui.prompt_modal import PromptModal
@@ -78,29 +78,6 @@ def _copy_to_system_clipboard(text: str) -> None:
             return
         except Exception:
             pass
-
-
-class IndicatorSegment(Widget):
-    """Thin focus indicator: renders ▀ half-blocks in $accent when .lit.
-
-    Filling the full widget width with ▀ makes the accent appear only in the
-    upper half of the character cell, giving a visually thin accent stripe.
-    Unlit: foreground = $panel → solid panel row, invisible against the bar.
-    """
-
-    DEFAULT_CSS = """
-    IndicatorSegment {
-        height: 1;
-        background: $background;
-        color: $panel;
-    }
-    IndicatorSegment.lit {
-        color: $accent;
-    }
-    """
-
-    def render(self) -> str:
-        return "\u2580" * self.content_size.width  # ▀
 
 
 class LyrsmithApp(App):
@@ -302,7 +279,7 @@ class LyrsmithApp(App):
     # Unsaved modal callback
     # ------------------------------------------------------------------
 
-    def _unsaved_modal_done(self, choice: str | None) -> None:
+    def _unsaved_modal_done(self, choice: str) -> None:
         if choice is None or choice == "back":
             self._pending_load = None
             self._pending_quit = False
@@ -378,7 +355,7 @@ class LyrsmithApp(App):
         # is already open and focus is in its TextArea. Forward to submit instead
         # of pushing a second modal on top.
         if isinstance(self.screen, PromptModal):
-            self.screen.action_submit()
+            self.screen.submit()
             return
         if self._loaded_path is None:
             self._w_top.set_status("No file loaded")
