@@ -267,7 +267,6 @@ class LyrsmithApp(App):
             # Plain text for existing plain lyrics or empty string for no lyrics —
             # always gives an editable area, never a dead hint screen.
             self._w_editor.load_plain(lyrics_text or "")
-        self._sync_waveform_timestamps()
 
         # Save last directory
         self._config.last_directory = str(path.parent)
@@ -343,7 +342,6 @@ class LyrsmithApp(App):
                 self._w_editor.load_lines(meta, lrc_lines)
             else:
                 self._w_editor.load_plain(lyrics_text)
-        self._sync_waveform_timestamps()
         self._w_top.set_status("Reloaded")
 
     def action_transcribe(self) -> None:
@@ -507,7 +505,6 @@ class LyrsmithApp(App):
 
         self._w_editor.load_lines({}, lines)
         self._w_editor.mark_dirty()
-        self._sync_waveform_timestamps()
         self._w_top.set_status("Transcribed (unsaved)")
 
     # ------------------------------------------------------------------

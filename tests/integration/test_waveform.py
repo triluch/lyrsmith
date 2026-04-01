@@ -8,6 +8,8 @@ import pytest
 
 from lyrsmith.ui.waveform_pane import VOL_MAX, ZOOM_MIN, WaveformPane
 
+from ._helpers import _SAMPLE_LRC, _fake_info, _make_mp3
+
 
 class TestWaveformPane:
     """Key handling on the waveform pane: play/pause, seek, zoom."""
@@ -184,5 +186,32 @@ class TestWaveformPane:
                 await pilot.press("up")  # → 45%
                 await pilot.pause()
                 assert pilot.app._config.volume == pytest.approx(45.0)
+
+
+class TestWaveformTimestampSync:
+    """Waveform LRC timestamp markers are populated when a file is loaded."""
+
+    def test_lrc_timestamps_populated_after_file_load(self, make_app, monkeypatch):
+        """Loading an LRC file sets waveform timestamp markers for all lines."""
+        _factory, tmp_path = make_app
+        _make_mp3(tmp_path / "song.mp3")
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p: _SAMPLE_LRC)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                # Entry order: ".." (0), song.mp3 (1). Two downs to reach the file.
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+
+                wf = pilot.app.query_one(WaveformPane)
+                assert wf._lrc_timestamps == pytest.approx([1.0, 3.0, 5.0, 7.0, 9.0])
+
+        asyncio.run(_impl())
 
         asyncio.run(_impl())

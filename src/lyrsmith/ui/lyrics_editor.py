@@ -273,6 +273,7 @@ class LyricsEditor(Widget):
         self._active_idx = -1
         self._refresh_list()
         self._switch_mode("lrc")
+        self.post_message(self.LinesChanged())
 
     def load_plain(self, text: str) -> None:
         """Load plain text lyrics into editor."""
@@ -285,6 +286,7 @@ class LyricsEditor(Widget):
         self._switch_mode("plain")
         # Reset after the queued TextArea.Changed has been processed.
         self.call_after_refresh(self._finish_plain_load)
+        self.post_message(self.LinesChanged())
 
     def _finish_plain_load(self) -> None:
         self._loading = False
