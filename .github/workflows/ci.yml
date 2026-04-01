@@ -35,8 +35,15 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Install system dependencies
+        run: brew install mpv
       - uses: astral-sh/setup-uv@v7
       - run: uv sync
+      - name: Fix duplicate libavdevice (PyAV bundled vs system ffmpeg from mpv)
+        run: |
+          bundled=$(find .venv -path '*/av/.dylibs/libavdevice.*.dylib' | head -1)
+          system=$(find /opt/homebrew -name 'libavdevice.*.dylib' | head -1)
+          [ -n "$bundled" ] && [ -n "$system" ] && ln -sf "$system" "$bundled" || true
       - run: uv run pytest -m "not slow" -q
 
   test-full:
@@ -62,6 +69,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Install system dependencies
+        run: brew install mpv
       - uses: astral-sh/setup-uv@v7
       - name: Cache Hugging Face models
         uses: actions/cache@v5
@@ -69,4 +78,9 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-whisper-tiny-macos
       - run: uv sync
+      - name: Fix duplicate libavdevice (PyAV bundled vs system ffmpeg from mpv)
+        run: |
+          bundled=$(find .venv -path '*/av/.dylibs/libavdevice.*.dylib' | head -1)
+          system=$(find /opt/homebrew -name 'libavdevice.*.dylib' | head -1)
+          [ -n "$bundled" ] && [ -n "$system" ] && ln -sf "$system" "$bundled" || true
       - run: uv run pytest -q
