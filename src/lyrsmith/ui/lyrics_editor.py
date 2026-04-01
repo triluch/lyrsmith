@@ -345,6 +345,9 @@ class LyricsEditor(Widget):
         if idx >= 0:
             self._jump_to_line(idx)
 
+    def _seek(self, delta: float) -> None:
+        self.post_message(self.SeekRequested(max(0.0, self._current_position + delta)))
+
     # ------------------------------------------------------------------
     # Internals — mode switching
     # ------------------------------------------------------------------
@@ -472,27 +475,19 @@ class LyricsEditor(Widget):
             return
         elif key == keybinds.KB_SEEK_FWD:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position + keybinds.SEEK_SMALL))
-            )
+            self._seek(keybinds.SEEK_SMALL)
             return
         elif key == keybinds.KB_SEEK_BACK:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position - keybinds.SEEK_SMALL))
-            )
+            self._seek(-keybinds.SEEK_SMALL)
             return
         elif key == keybinds.KB_SEEK_FWD_LARGE:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position + keybinds.SEEK_LARGE))
-            )
+            self._seek(keybinds.SEEK_LARGE)
             return
         elif key == keybinds.KB_SEEK_BACK_LARGE:
             event.stop()
-            self.post_message(
-                self.SeekRequested(max(0.0, self._current_position - keybinds.SEEK_LARGE))
-            )
+            self._seek(-keybinds.SEEK_LARGE)
             return
 
         if key == keybinds.KB_SEEK_TO_LINE:

@@ -28,7 +28,7 @@ def decode_to_pcm(path: Path) -> tuple[np.ndarray, int]:
     try:
         audio_stream = next((s for s in container.streams if s.type == "audio"), None)
         if audio_stream is None:
-            return np.zeros(0, dtype=np.float32), WAVEFORM_SAMPLE_RATE
+            return _empty, WAVEFORM_SAMPLE_RATE
 
         resampler = av.AudioResampler(
             format="fltp",
@@ -53,6 +53,6 @@ def decode_to_pcm(path: Path) -> tuple[np.ndarray, int]:
         container.close()
 
     if not frames:
-        return np.zeros(0, dtype=np.float32), WAVEFORM_SAMPLE_RATE
+        return _empty, WAVEFORM_SAMPLE_RATE
 
     return np.concatenate(frames).astype(np.float32), WAVEFORM_SAMPLE_RATE

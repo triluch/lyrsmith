@@ -11,7 +11,6 @@ from lyrsmith.lrc import (
     is_lrc,
     parse,
     serialize,
-    word_ts_for_split,
 )
 
 # ---------------------------------------------------------------------------
@@ -215,99 +214,6 @@ class TestActiveLineIndex:
         # When two lines share a timestamp, the last one at that ts is active.
         lines = [LRCLine(1.0, "A"), LRCLine(1.0, "B"), LRCLine(3.0, "C")]
         assert active_line_index(lines, 1.0) == 1
-
-
-# ---------------------------------------------------------------------------
-# word_ts_for_split
-# ---------------------------------------------------------------------------
-
-
-def _words(*specs: tuple[str, float, float]) -> list[WordTiming]:
-    return [WordTiming(word=w, start=s, end=e) for w, s, e in specs]
-
-
-class TestWordTsForSplit:
-    def test_empty_words_returns_none(self):
-        ts, idx = word_ts_for_split([], "World")
-        assert ts is None
-        assert idx == 0
-
-    def test_empty_second_half_returns_none(self):
-        words = _words((" Hello", 1.0, 1.3), (" world", 1.4, 1.8))
-        ts, idx = word_ts_for_split(words, "")
-        assert ts is None
-        assert idx == 0
-
-    def test_blank_second_half_returns_none(self):
-        words = _words((" Hello", 1.0, 1.3))
-        ts, idx = word_ts_for_split(words, "   ")
-        assert ts is None
-        assert idx == 0
-
-    def test_match_first_word(self):
-        words = _words((" Hello", 1.0, 1.3), (" world", 1.4, 1.8))
-        ts, idx = word_ts_for_split(words, "Hello world")
-        assert ts == pytest.approx(1.0)
-        assert idx == 0
-
-    def test_match_second_word(self):
-        words = _words((" Hello", 1.0, 1.3), (" world", 1.4, 1.8))
-        ts, idx = word_ts_for_split(words, "World")
-        assert ts == pytest.approx(1.4)
-        assert idx == 1
-
-    def test_match_middle_word(self):
-        words = _words((" one", 0.5, 0.8), (" two", 1.0, 1.3), (" three", 1.5, 1.9))
-        ts, idx = word_ts_for_split(words, "Two three")
-        assert ts == pytest.approx(1.0)
-        assert idx == 1
-
-    def test_no_match_returns_none(self):
-        words = _words((" Hello", 1.0, 1.3), (" world", 1.4, 1.8))
-        ts, idx = word_ts_for_split(words, "Goodbye")
-        assert ts is None
-        assert idx == 0
-
-    def test_leading_space_in_word_stripped(self):
-        # faster-whisper words typically have " word" with a leading space
-        words = _words((" World", 2.0, 2.5))
-        ts, idx = word_ts_for_split(words, "World")
-        assert ts == pytest.approx(2.0)
-        assert idx == 0
-
-    def test_case_insensitive_match(self):
-        words = _words((" HELLO", 0.5, 0.9))
-        ts, idx = word_ts_for_split(words, "hello")
-        assert ts == pytest.approx(0.5)
-        assert idx == 0
-
-    def test_punctuation_stripped_from_word(self):
-        # Whisper sometimes includes punctuation: "world,"
-        words = _words(("world,", 1.4, 1.8))
-        ts, idx = word_ts_for_split(words, "World")
-        assert ts == pytest.approx(1.4)
-        assert idx == 0
-
-    def test_punctuation_stripped_from_second_half(self):
-        words = _words((" world", 1.4, 1.8))
-        ts, idx = word_ts_for_split(words, "World!")
-        assert ts == pytest.approx(1.4)
-        assert idx == 0
-
-    def test_first_match_wins(self):
-        # Both "world" entries share the same text; the first one is returned.
-        words = _words((" world", 1.0, 1.3), (" world", 2.0, 2.3))
-        ts, idx = word_ts_for_split(words, "world")
-        assert ts == pytest.approx(1.0)
-        assert idx == 0
-
-    def test_all_punctuation_first_token_returns_none(self):
-        # If every character in the first token is non-word, target becomes ""
-        # and the function must fall back to (None, 0) rather than crash.
-        words = _words((" Hello", 1.0, 1.3))
-        ts, idx = word_ts_for_split(words, "!!! ???")
-        assert ts is None
-        assert idx == 0
 
 
 # ---------------------------------------------------------------------------

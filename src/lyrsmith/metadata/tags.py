@@ -99,8 +99,6 @@ def write_lyrics(path: Path, lyrics: str) -> None:
         else:
             raise RuntimeError(f"Lyrics saving not supported for {ext} files")
         cache.invalidate(path)
-    except RuntimeError:
-        raise
     except Exception as e:
         raise RuntimeError(f"Failed to write lyrics to {path}: {e}") from e
 

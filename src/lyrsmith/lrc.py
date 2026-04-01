@@ -11,14 +11,19 @@ _META_RE = re.compile(r"^\[(\w+):(.*?)\]\s*$")
 _NONWORD_RE = re.compile(r"[^\w]+")
 
 
-def _fmt_ts(seconds: float) -> str:
-    """Format seconds as [MM:SS.cc]."""
+def fmt_seconds(seconds: float) -> str:
+    """Format seconds as MM:SS.cc (no brackets)."""
     total_cs = round(seconds * 100)
     cs = total_cs % 100
     total_s = total_cs // 100
     s = total_s % 60
     m = total_s // 60
-    return f"[{m:02d}:{s:02d}.{cs:02d}]"
+    return f"{m:02d}:{s:02d}.{cs:02d}"
+
+
+def _fmt_ts(seconds: float) -> str:
+    """Format seconds as [MM:SS.cc]."""
+    return f"[{fmt_seconds(seconds)}]"
 
 
 @dataclass
@@ -146,32 +151,3 @@ def attach_word_data(lines: list[LRCLine], enrichment: dict[str, LineEnrichment]
             line.words = e.words
             if e.end is not None:
                 line.end = e.end
-
-
-def word_ts_for_split(words: list[WordTiming], second_half: str) -> tuple[float | None, int]:
-    """Find the start time and list index of the word that begins *second_half*.
-
-    The first token of *second_half* (stripped of non-word characters,
-    lowercased) is compared against each ``WordTiming.word`` in order.  The
-    first match wins.
-
-    Returns ``(start_seconds, word_index)`` on success, ``(None, 0)`` when
-    *words* is empty, *second_half* is blank, or no word matches.
-
-    Callers should fall back to their existing heuristic timestamp when
-    ``start_seconds is None``.  The returned ``word_index`` can be used as
-    the boundary to split a words list into first-half and second-half
-    portions — it is only meaningful when ``start_seconds is not None``.
-    """
-    if not words:
-        return None, 0
-    tokens = second_half.split()
-    if not tokens:
-        return None, 0
-    target = _NONWORD_RE.sub("", tokens[0]).lower()
-    if not target:
-        return None, 0
-    for i, w in enumerate(words):
-        if _NONWORD_RE.sub("", w.word).lower() == target:
-            return w.start, i
-    return None, 0

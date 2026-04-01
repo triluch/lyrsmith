@@ -70,8 +70,6 @@ def _split_segment(seg: _SegmentLike, max_words: int, lang: str = "") -> list[_S
     """
     if max_words <= 0 or not seg.words or len(seg.words) <= max_words:
         return [seg]
-    if len(seg.words) < 2:
-        return [seg]
 
     split_i = best_split_index(seg.words, lang)
     first_words = seg.words[: split_i + 1]

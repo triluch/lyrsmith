@@ -10,6 +10,7 @@ from textual.widgets import Label, Static
 
 from .. import keybinds
 from ..audio import waveform as wf
+from ..lrc import fmt_seconds
 
 ZOOM_STEP = 5.0
 ZOOM_MIN = 5.0
@@ -19,19 +20,9 @@ VOL_MIN = 0.0
 VOL_MAX = 100.0
 
 
-def _fmt_single(seconds: float) -> str:
-    """Format seconds as mm:ss.xx (no brackets)."""
-    total_cs = round(seconds * 100)
-    cs = total_cs % 100
-    total_s = total_cs // 100
-    s = total_s % 60
-    m = total_s // 60
-    return f"{m:02d}:{s:02d}.{cs:02d}"
-
-
 def _fmt_ts_pair(position: float, duration: float) -> str:
     """Format position/duration as [mm:ss.xx/mm:ss.xx]."""
-    return f"[{_fmt_single(position)}/{_fmt_single(duration)}]"
+    return f"[{fmt_seconds(position)}/{fmt_seconds(duration)}]"
 
 
 def _fmt_vol(volume: float) -> str:
