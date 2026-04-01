@@ -247,7 +247,7 @@ class LyrsmithApp(App):
         self._w_left.set_loaded(path)
 
         # Update bottom bar context
-        self._update_bottom_bar()
+        self._update_bottom_bar(self._classify_focus(self.focused))
 
         # Decode PCM for waveform (run in thread to avoid blocking)
         self.run_worker(
@@ -511,14 +511,32 @@ class LyrsmithApp(App):
     # Focus tracking for bottom bar context
     # ------------------------------------------------------------------
 
+    def _classify_focus(self, focused: object) -> str:
+        """Classify the focused widget into a pane name.
+
+        Returns 'left' | 'wave' | 'edit' | '' (no focus / modal / unknown).
+        Called once per focus change; result passed to both _update_bottom_bar
+        and _update_indicators so the _in_widget checks run only once.
+        """
+        if focused is None:
+            return ""
+        if self._in_widget(focused, LeftPane):
+            return "left"
+        if self._in_widget(focused, WaveformPane):
+            return "wave"
+        if self._in_widget(focused, LyricsEditor):
+            return "edit"
+        return ""
+
     def _poll_focus(self) -> None:
         if not self.is_running:
             return
         focused = self.focused
         if focused is not self._last_focused:
             self._last_focused = focused
-            self._update_bottom_bar()
-            self._update_indicators(focused)
+            pane = self._classify_focus(focused)
+            self._update_bottom_bar(pane)
+            self._update_indicators(pane)
 
     def _light_indicator(self, pane: str) -> None:
         """Light the given pane's indicator segment and unlit all others.
@@ -529,22 +547,9 @@ class LyrsmithApp(App):
         for key, seg in self._ind.items():
             seg.set_class(key == pane, "lit")
 
-    def _update_indicators(self, focused: object) -> None:
-        """Called from _poll_focus on every focus change.
-
-        The three indicator segments are set in one synchronous call —
-        exactly one is ever lit at a time, no flicker.
-        """
-        if focused is None:
-            self._light_indicator("")
-        elif self._in_widget(focused, LeftPane):
-            self._light_indicator("left")
-        elif self._in_widget(focused, WaveformPane):
-            self._light_indicator("wave")
-        elif self._in_widget(focused, LyricsEditor):
-            self._light_indicator("edit")
-        else:
-            self._light_indicator("")  # modal or unknown
+    def _update_indicators(self, pane: str) -> None:
+        """Light the correct indicator segment for *pane*."""
+        self._light_indicator(pane)
 
     @staticmethod
     def _in_widget(focused, cls) -> bool:
@@ -553,15 +558,10 @@ class LyrsmithApp(App):
             return True
         return any(isinstance(a, cls) for a in focused.ancestors)
 
-    def _update_bottom_bar(self) -> None:
-        focused = self.focused
-        if focused is None:
-            self._w_bar.set_context("empty")
-            return
-
-        if self._in_widget(focused, WaveformPane):
+    def _update_bottom_bar(self, pane: str) -> None:
+        if pane == "wave":
             self._w_bar.set_context("waveform")
-        elif self._in_widget(focused, LyricsEditor):
+        elif pane == "edit":
             mode = self._w_editor.mode
             if mode == "lrc":
                 self._w_bar.set_context("lyrics-lrc")
@@ -569,7 +569,7 @@ class LyrsmithApp(App):
                 self._w_bar.set_context("lyrics-plain")
             else:
                 self._w_bar.set_context("empty")
-        elif self._in_widget(focused, LeftPane):
+        elif pane == "left":
             self._w_bar.set_context("browser")
         else:
             self._w_bar.set_context("empty")
