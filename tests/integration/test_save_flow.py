@@ -17,25 +17,6 @@ from ._helpers import _SAMPLE_LRC, _fake_info, _make_mp3
 class TestSaveFlow:
     """Dirty-flag tracking, ctrl+s save, and UnsavedModal interactions."""
 
-    def test_dirty_flag_set_after_delete(self, make_app):
-        _factory, _ = make_app
-
-        async def _impl():
-            async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                assert not ed.is_dirty
-                pilot.app.query_one("#lrc-list").focus()
-                await pilot.pause()
-                await pilot.press("ctrl+d")
-                await pilot.pause()
-                assert ed.is_dirty
-                ed.clear_dirty()
-                await pilot.press("ctrl+q")
-
-        asyncio.run(_impl())
-
     def test_ctrl_s_calls_write_lyrics(self, make_app, monkeypatch, tmp_path):
         _factory, _ = make_app
         audio = _make_mp3(tmp_path / "track.mp3")

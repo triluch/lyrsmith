@@ -76,6 +76,20 @@ class TestWaveformPane:
 
         asyncio.run(_impl())
 
+    def test_shift_left_seeks_large_backward(self, make_app):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                await self._focus_waveform(pilot)
+                wf = pilot.app.query_one(WaveformPane)
+                wf._position = 40.0
+                await pilot.press("shift+left")  # −30 s → 10.0
+                await pilot.pause()
+                assert pilot.app._player.position == pytest.approx(10.0)
+
+        asyncio.run(_impl())
+
     def test_plus_zooms_in(self, make_app):
         _factory, _ = make_app
 
