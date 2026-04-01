@@ -35,7 +35,16 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Cache Homebrew downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-${{ runner.os }}-mpv-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: brew-${{ runner.os }}-mpv-
       - name: Install system dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
         run: brew install mpv
       - uses: astral-sh/setup-uv@v7
       - run: uv sync
@@ -69,7 +78,16 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Cache Homebrew downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-${{ runner.os }}-mpv-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: brew-${{ runner.os }}-mpv-
       - name: Install system dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
         run: brew install mpv
       - uses: astral-sh/setup-uv@v7
       - name: Cache Hugging Face models
