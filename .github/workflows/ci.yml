@@ -35,8 +35,6 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install system dependencies
-        run: brew install mpv
       - uses: astral-sh/setup-uv@v7
       - run: uv sync
       - run: uv run pytest -m "not slow" -q
@@ -64,8 +62,6 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install system dependencies
-        run: brew install mpv
       - uses: astral-sh/setup-uv@v7
       - name: Cache Hugging Face models
         uses: actions/cache@v5
