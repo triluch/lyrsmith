@@ -6,9 +6,7 @@ import asyncio
 
 import pytest
 
-from lyrsmith.ui.lyrics_editor import LyricsEditor
-
-from ._helpers import _SAMPLE_LRC
+from ._helpers import _load_and_focus
 
 
 class TestUndoChain:
@@ -19,13 +17,7 @@ class TestUndoChain:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                await pilot.press("tab")  # browser → waveform
-                await pilot.pause()
-                await pilot.press("tab")  # waveform → lrc-list
-                await pilot.pause()
+                ed = await _load_and_focus(pilot)
 
                 original_ts = ed._lines[0].timestamp  # 1.0
                 ed._current_position = 8.0
@@ -47,13 +39,7 @@ class TestUndoChain:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                await pilot.press("tab")  # browser → waveform
-                await pilot.pause()
-                await pilot.press("tab")  # waveform → lrc-list
-                await pilot.pause()
+                ed = await _load_and_focus(pilot)
 
                 assert len(ed._lines) == 5
                 deleted_text = ed._lines[0].text
@@ -77,13 +63,7 @@ class TestUndoChain:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                await pilot.press("tab")  # browser → waveform
-                await pilot.pause()
-                await pilot.press("tab")  # waveform → lrc-list
-                await pilot.pause()
+                ed = await _load_and_focus(pilot)
 
                 ed._current_position = 6.0
                 await pilot.press("t")
@@ -124,14 +104,7 @@ class TestMultiLevelUndo:
     """Multi-level undo: each Ctrl+Z undoes one step back through history."""
 
     async def _setup(self, pilot):
-        ed = pilot.app.query_one(LyricsEditor)
-        ed.load_lrc(_SAMPLE_LRC)
-        await pilot.pause()
-        await pilot.press("tab")  # browser → waveform
-        await pilot.pause()
-        await pilot.press("tab")  # waveform → lrc-list
-        await pilot.pause()
-        return ed
+        return await _load_and_focus(pilot)
 
     def test_all_undo_saving_operations_are_individually_undoable(self, make_app):
         """stamp → delete → insert → merge: each ctrl+z undoes exactly one step.

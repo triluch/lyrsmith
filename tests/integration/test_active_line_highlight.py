@@ -13,9 +13,7 @@ import asyncio
 import pytest
 from textual.widgets import Label, ListItem, ListView
 
-from lyrsmith.ui.lyrics_editor import LyricsEditor
-
-from ._helpers import _SAMPLE_LRC
+from ._helpers import _load_and_focus
 
 
 def _list_items(pilot) -> list[ListItem]:
@@ -29,14 +27,7 @@ def _label_text(item: ListItem) -> str:
 
 class TestActiveLineHighlight:
     async def _setup(self, pilot):
-        ed = pilot.app.query_one(LyricsEditor)
-        ed.load_lrc(_SAMPLE_LRC)
-        await pilot.pause()
-        await pilot.press("tab")  # browser → waveform
-        await pilot.pause()
-        await pilot.press("tab")  # waveform → lrc-list
-        await pilot.pause()
-        return ed
+        return await _load_and_focus(pilot)
 
     # ------------------------------------------------------------------
     # CSS class toggling via update_position

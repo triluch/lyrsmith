@@ -8,9 +8,8 @@ import pytest
 
 from lyrsmith.lrc import WordTiming
 from lyrsmith.ui.edit_line_modal import EditLineModal
-from lyrsmith.ui.lyrics_editor import LyricsEditor
 
-from ._helpers import _SAMPLE_LRC
+from ._helpers import _load_and_focus
 
 
 class TestLrcEditorInteractions:
@@ -18,14 +17,7 @@ class TestLrcEditorInteractions:
 
     async def _setup(self, pilot):
         """Load _SAMPLE_LRC and navigate to the lrc-list. Returns the editor."""
-        ed = pilot.app.query_one(LyricsEditor)
-        ed.load_lrc(_SAMPLE_LRC)
-        await pilot.pause()
-        await pilot.press("tab")  # browser → waveform
-        await pilot.pause()
-        await pilot.press("tab")  # waveform → lrc-list
-        await pilot.pause()
-        return ed
+        return await _load_and_focus(pilot)
 
     def test_stamp_updates_timestamp_to_playback_position(self, make_app):
         _factory, _ = make_app

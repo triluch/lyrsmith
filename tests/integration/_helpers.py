@@ -53,6 +53,29 @@ def _fake_info(path: Path) -> FileInfo:
 
 
 # ---------------------------------------------------------------------------
+# Async setup helper — load LRC and navigate to lrc-list via tab
+# ---------------------------------------------------------------------------
+
+
+async def _load_and_focus(pilot, lrc: str = _SAMPLE_LRC):
+    """Load LRC content into the editor and navigate to the lrc-list.
+
+    Presses tab twice from the file browser (browser → waveform → lrc-list),
+    matching real user navigation. Returns the LyricsEditor instance.
+    """
+    from lyrsmith.ui.lyrics_editor import LyricsEditor
+
+    ed = pilot.app.query_one(LyricsEditor)
+    ed.load_lrc(lrc)
+    await pilot.pause()
+    await pilot.press("tab")  # browser → waveform
+    await pilot.pause()
+    await pilot.press("tab")  # waveform → lrc-list
+    await pilot.pause()
+    return ed
+
+
+# ---------------------------------------------------------------------------
 # FakePlayer — no libmpv dependency
 # ---------------------------------------------------------------------------
 

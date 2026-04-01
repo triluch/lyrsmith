@@ -35,14 +35,7 @@ from lyrsmith.metadata.tags import (
 # ---------------------------------------------------------------------------
 # File creation helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_mp3(path: Path) -> Path:
-    """Write a file with a valid ID3v2 header and no audio so mutagen accepts it."""
-    # ID3v2.3 header: 'ID3' + version(2.3) + flags(0) + syncsafe size(0)
-    header = b"ID3\x03\x00\x00\x00\x00\x00\x00"
-    path.write_bytes(header)
-    return path
+from tests.integration._helpers import _make_mp3  # noqa: E402
 
 
 def _make_audio_via_pyav(path: Path, fmt: str, codec: str, sr: int = 22050) -> Path:
@@ -457,23 +450,28 @@ class TestEncodeDecodeWordData:
 
 
 # ---------------------------------------------------------------------------
+# read_word_data / write_word_data — shared fixture lines
+# ---------------------------------------------------------------------------
+
+
+def _sample_word_lines():
+    """One LRC line with two word-timing entries; used by both MP3 and Vorbis tests."""
+    return [
+        _line_with_words(1.0, "Hello world", (" Hello", 1.0, 1.3), (" world", 1.4, 1.8), end=2.0)
+    ]
+
+
+# ---------------------------------------------------------------------------
 # read_word_data / write_word_data — MP3
 # ---------------------------------------------------------------------------
 
 
 class TestReadWriteWordDataMP3:
-    def _sample_lines(self):
-        return [
-            _line_with_words(
-                1.0, "Hello world", (" Hello", 1.0, 1.3), (" world", 1.4, 1.8), end=2.0
-            )
-        ]
-
     def test_read_absent_tag_returns_empty(self, mp3_file):
         assert read_word_data(mp3_file) == {}
 
     def test_write_then_read_words_roundtrip(self, mp3_file):
-        lines = self._sample_lines()
+        lines = _sample_word_lines()
         write_word_data(mp3_file, lines)
         result = read_word_data(mp3_file)
         assert "1.000" in result
@@ -483,7 +481,7 @@ class TestReadWriteWordDataMP3:
         assert enrich.words[1].word == " world"
 
     def test_write_then_read_end_roundtrip(self, mp3_file):
-        lines = self._sample_lines()
+        lines = _sample_word_lines()
         write_word_data(mp3_file, lines)
         result = read_word_data(mp3_file)
         assert result["1.000"].end == pytest.approx(2.0)
@@ -507,19 +505,19 @@ class TestReadWriteWordDataMP3:
         assert "2.000" in result
 
     def test_write_empty_lines_deletes_tag(self, mp3_file):
-        write_word_data(mp3_file, self._sample_lines())
+        write_word_data(mp3_file, _sample_word_lines())
         assert read_word_data(mp3_file) != {}
         write_word_data(mp3_file, [])
         assert read_word_data(mp3_file) == {}
 
     def test_write_lines_without_enrichment_deletes_tag(self, mp3_file):
-        write_word_data(mp3_file, self._sample_lines())
+        write_word_data(mp3_file, _sample_word_lines())
         write_word_data(mp3_file, [LRCLine(1.0, "No enrichment")])
         assert read_word_data(mp3_file) == {}
 
     def test_tag_name_constant_used(self, mp3_file):
         """WORD_DATA_TAG must be the description of the TXXX frame."""
-        write_word_data(mp3_file, self._sample_lines())
+        write_word_data(mp3_file, _sample_word_lines())
         from mutagen.id3 import ID3
 
         tags = ID3(mp3_file)
@@ -528,7 +526,7 @@ class TestReadWriteWordDataMP3:
     def test_lyrics_tag_unaffected_by_word_data_write(self, mp3_file):
         """Writing word data must not corrupt an existing USLT lyrics tag."""
         write_lyrics(mp3_file, "[00:01.00]Hello")
-        write_word_data(mp3_file, self._sample_lines())
+        write_word_data(mp3_file, _sample_word_lines())
         assert read_lyrics(mp3_file) == "[00:01.00]Hello"
 
 
@@ -538,13 +536,6 @@ class TestReadWriteWordDataMP3:
 
 
 class TestReadWriteWordDataVorbis:
-    def _sample_lines(self):
-        return [
-            _line_with_words(
-                1.0, "Hello world", (" Hello", 1.0, 1.3), (" world", 1.4, 1.8), end=2.0
-            )
-        ]
-
     @pytest.mark.parametrize("fixture_name", ["flac_file", "ogg_file", "opus_file"])
     def test_read_absent_tag_returns_empty(self, fixture_name, request):
         f = request.getfixturevalue(fixture_name)
@@ -553,7 +544,7 @@ class TestReadWriteWordDataVorbis:
     @pytest.mark.parametrize("fixture_name", ["flac_file", "ogg_file", "opus_file"])
     def test_write_then_read_roundtrip(self, fixture_name, request):
         f = request.getfixturevalue(fixture_name)
-        write_word_data(f, self._sample_lines())
+        write_word_data(f, _sample_word_lines())
         result = read_word_data(f)
         assert "1.000" in result
         enrich = result["1.000"]
@@ -565,7 +556,7 @@ class TestReadWriteWordDataVorbis:
     @pytest.mark.parametrize("fixture_name", ["flac_file", "ogg_file", "opus_file"])
     def test_write_empty_deletes_tag(self, fixture_name, request):
         f = request.getfixturevalue(fixture_name)
-        write_word_data(f, self._sample_lines())
+        write_word_data(f, _sample_word_lines())
         assert read_word_data(f) != {}
         write_word_data(f, [])
         assert read_word_data(f) == {}
@@ -585,12 +576,12 @@ class TestReadWriteWordDataVorbis:
         """Writing word data must not corrupt an existing LYRICS Vorbis tag."""
         f = request.getfixturevalue(fixture_name)
         write_lyrics(f, "[00:01.00]Hello")
-        write_word_data(f, self._sample_lines())
+        write_word_data(f, _sample_word_lines())
         assert read_lyrics(f) == "[00:01.00]Hello"
 
     def test_flac_tag_key_name(self, flac_file):
         """Vorbis comment key must be WORD_DATA_TAG (case-insensitive match)."""
-        write_word_data(flac_file, self._sample_lines())
+        write_word_data(flac_file, _sample_word_lines())
         from mutagen import File as MF
 
         f = MF(str(flac_file))

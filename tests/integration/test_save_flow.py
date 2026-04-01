@@ -11,7 +11,7 @@ from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
 from lyrsmith.ui.unsaved_modal import UnsavedModal
 
-from ._helpers import _SAMPLE_LRC, _fake_info, _make_mp3
+from ._helpers import _SAMPLE_LRC, _fake_info, _load_and_focus, _make_mp3
 
 
 class TestSaveFlow:
@@ -210,13 +210,7 @@ class TestSaveFlow:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                await pilot.press("tab")  # browser → waveform
-                await pilot.pause()
-                await pilot.press("tab")  # waveform → lrc-list
-                await pilot.pause()
+                ed = await _load_and_focus(pilot)
 
                 ed.update_position(4.5)
                 await pilot.press("t")
@@ -237,13 +231,7 @@ class TestSaveFlow:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                ed = pilot.app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                await pilot.press("tab")  # browser → waveform
-                await pilot.pause()
-                await pilot.press("tab")  # waveform → lrc-list
-                await pilot.pause()
+                ed = await _load_and_focus(pilot)
 
                 await pilot.press("period")  # +10 ms
                 await pilot.pause()
@@ -264,13 +252,7 @@ class TestSaveFlow:
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
                 app = pilot.app
-                ed = app.query_one(LyricsEditor)
-                ed.load_lrc(_SAMPLE_LRC)
-                await pilot.pause()
-                await pilot.press("tab")  # browser → waveform
-                await pilot.pause()
-                await pilot.press("tab")  # waveform → lrc-list
-                await pilot.pause()
+                ed = await _load_and_focus(pilot)
 
                 ed.update_position(4.5)
                 await pilot.press("t")
