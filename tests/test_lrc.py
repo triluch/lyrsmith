@@ -211,27 +211,10 @@ class TestActiveLineIndex:
     def test_empty_list(self):
         assert active_line_index([], 5.0) == -1
 
-    def test_unsorted_input_returns_correct_result(self):
-        # After a nudge or stamp, _lines may be temporarily out of order.
-        # active_line_index must still find the correct active line — it
-        # must NOT use an early-exit that assumes sorted order.
-        lines = [
-            LRCLine(3.0, "B"),  # out of order
-            LRCLine(1.0, "A"),
-            LRCLine(5.0, "C"),
-        ]
-        # Position 2.0: the last line with timestamp <= 2.0 is "A" at index 1
-        assert active_line_index(lines, 2.0) == 1
-
-    def test_unsorted_input_last_eligible(self):
-        # Even when the list is shuffled, the LAST eligible line is returned.
-        lines = [LRCLine(5.0, "C"), LRCLine(1.0, "A"), LRCLine(3.0, "B")]
-        # All three are <= 6.0; the last one in list order with ts <= 6 is B at idx 2
-        assert active_line_index(lines, 6.0) == 2
-
-    def test_unsorted_none_eligible(self):
-        lines = [LRCLine(5.0, "C"), LRCLine(3.0, "B")]
-        assert active_line_index(lines, 2.0) == -1
+    def test_multiple_lines_same_timestamp(self):
+        # When two lines share a timestamp, the last one at that ts is active.
+        lines = [LRCLine(1.0, "A"), LRCLine(1.0, "B"), LRCLine(3.0, "C")]
+        assert active_line_index(lines, 1.0) == 1
 
 
 # ---------------------------------------------------------------------------

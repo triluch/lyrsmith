@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bisect
 import re
 from dataclasses import dataclass, field
 
@@ -121,15 +122,10 @@ def is_lrc(text: str) -> bool:
 def active_line_index(lines: list[LRCLine], position: float) -> int:
     """Return index of the last line whose timestamp <= position. -1 if none.
 
-    Does a full linear scan — does NOT assume sorted input.  Mutations such as
-    nudge or stamp can leave _lines out of order between re-sorts, so an
-    early-exit optimisation would return the wrong line.
+    Assumes *lines* is sorted by timestamp — all mutation paths (stamp, nudge,
+    insert, split, undo) maintain this invariant.  Uses binary search: O(log n).
     """
-    result = -1
-    for i, line in enumerate(lines):
-        if line.timestamp <= position:
-            result = i
-    return result
+    return bisect.bisect_right(lines, position, key=lambda l: l.timestamp) - 1
 
 
 def attach_word_data(lines: list[LRCLine], enrichment: dict[str, LineEnrichment]) -> None:
