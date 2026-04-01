@@ -278,61 +278,61 @@ class ConfigModal(ModalScreen[Config | None]):
     def action_cancel(self) -> None:
         self.dismiss(None)
 
+    def _parse_config(self) -> Config:
+        """Parse and validate all form fields. Raises ValueError on bad input."""
+        whisper_model = self._get("f-whisper-model") or self._cfg.whisper_model
+        compute_type = self._get("f-compute-type") or "default"
+        whisper_language = self._get("f-whisper-language") or self._cfg.whisper_language
+
+        langs_raw = self._get("f-whisper-languages")
+        whisper_languages = (
+            [lang.strip() for lang in langs_raw.split(",") if lang.strip()]
+            if langs_raw
+            else list(self._cfg.whisper_languages)
+        )
+        if not whisper_languages:
+            whisper_languages = ["auto"]
+
+        transcription_device = self._get("f-device") or "cpu"
+
+        intra_threads = int(self._get("f-intra-threads") or "0")
+        inter_threads = int(self._get("f-inter-threads") or "1")
+        max_words_per_line = int(self._get("f-max-words-per-line") or "0")
+        if intra_threads < 0:
+            raise ValueError("intra threads must be >= 0")
+        if inter_threads < 1:
+            raise ValueError("inter threads must be >= 1")
+        if max_words_per_line < 0:
+            raise ValueError("max words/line must be >= 0")
+
+        vad_threshold = float(self._get("f-vad-threshold") or "0")
+        vad_min_silence_ms = int(self._get("f-vad-min-silence-ms") or "500")
+        if vad_threshold < 0:
+            raise ValueError("VAD threshold must be >= 0")
+        if vad_min_silence_ms < 0:
+            raise ValueError("VAD min silence must be >= 0")
+
+        waveform_zoom = float(self._get("f-waveform-zoom") or "20.0")
+        if waveform_zoom <= 0:
+            raise ValueError("waveform zoom must be > 0")
+
+        return Config(
+            whisper_model=whisper_model,
+            whisper_language=whisper_language,
+            whisper_languages=whisper_languages,
+            waveform_zoom=waveform_zoom,
+            transcription_device=transcription_device,
+            intra_threads=intra_threads,
+            inter_threads=inter_threads,
+            compute_type=compute_type,
+            whisper_max_words_per_line=max_words_per_line,
+            vad_threshold=vad_threshold,
+            vad_min_silence_ms=vad_min_silence_ms,
+            last_directory=self._cfg.last_directory,
+        )
+
     def action_save_config(self) -> None:
         try:
-            whisper_model = self._get("f-whisper-model") or self._cfg.whisper_model
-            compute_type = self._get("f-compute-type") or "default"
-            whisper_language = self._get("f-whisper-language") or self._cfg.whisper_language
-
-            langs_raw = self._get("f-whisper-languages")
-            whisper_languages = (
-                [lang.strip() for lang in langs_raw.split(",") if lang.strip()]
-                if langs_raw
-                else list(self._cfg.whisper_languages)
-            )
-            if not whisper_languages:
-                whisper_languages = ["auto"]
-
-            transcription_device = self._get("f-device") or "cpu"
-
-            intra_threads = int(self._get("f-intra-threads") or "0")
-            inter_threads = int(self._get("f-inter-threads") or "1")
-            max_words_per_line = int(self._get("f-max-words-per-line") or "0")
-            if intra_threads < 0:
-                raise ValueError("intra threads must be >= 0")
-            if inter_threads < 1:
-                raise ValueError("inter threads must be >= 1")
-            if max_words_per_line < 0:
-                raise ValueError("max words/line must be >= 0")
-
-            vad_threshold = float(self._get("f-vad-threshold") or "0")
-            vad_min_silence_ms = int(self._get("f-vad-min-silence-ms") or "500")
-            if vad_threshold < 0:
-                raise ValueError("VAD threshold must be >= 0")
-            if vad_min_silence_ms < 0:
-                raise ValueError("VAD min silence must be >= 0")
-
-            waveform_zoom = float(self._get("f-waveform-zoom") or "20.0")
-            if waveform_zoom <= 0:
-                raise ValueError("waveform zoom must be > 0")
-
+            self.dismiss(self._parse_config())
         except ValueError as exc:
             self._set_error(str(exc))
-            return
-
-        self.dismiss(
-            Config(
-                whisper_model=whisper_model,
-                whisper_language=whisper_language,
-                whisper_languages=whisper_languages,
-                waveform_zoom=waveform_zoom,
-                transcription_device=transcription_device,
-                intra_threads=intra_threads,
-                inter_threads=inter_threads,
-                compute_type=compute_type,
-                whisper_max_words_per_line=max_words_per_line,
-                vad_threshold=vad_threshold,
-                vad_min_silence_ms=vad_min_silence_ms,
-                last_directory=self._cfg.last_directory,
-            )
-        )
