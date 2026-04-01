@@ -90,6 +90,26 @@ class TestLoadEdgeCases:
         cfg_file.write_text("this: is: invalid: yaml: :::: }{")
         cfg = load()  # must not raise
         assert cfg.whisper_model == "large-v3-turbo"
+        assert cfg.startup_warning != ""
+
+    def test_valid_yaml_has_no_startup_warning(self, tmp_path, monkeypatch):
+        cfg_file = _patch(monkeypatch, tmp_path)
+        cfg_file.write_text("whisper_model: tiny\n")
+        cfg = load()
+        assert cfg.startup_warning == ""
+
+    def test_startup_warning_not_written_to_disk(self, tmp_path, monkeypatch):
+        cfg_file = _patch(monkeypatch, tmp_path)
+        cfg_file.write_text("this: is: invalid: yaml: :::: }{")
+        cfg = load()
+        assert cfg.startup_warning != ""
+        # Save a clean config and reload — warning must not reappear.
+        from lyrsmith.config import save
+
+        clean = cfg.__class__()
+        save(clean)
+        reloaded = load()
+        assert reloaded.startup_warning == ""
 
     def test_unknown_keys_ignored(self, tmp_path, monkeypatch):
         cfg_file = _patch(monkeypatch, tmp_path)

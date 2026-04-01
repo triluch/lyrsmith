@@ -179,6 +179,9 @@ class LyrsmithApp(App):
         self._w_top.set_model(self._config.whisper_model)
         self._w_top.set_language(self._config.whisper_language)
 
+        if self._config.startup_warning:
+            self.notify(self._config.startup_warning, severity="warning", timeout=8)
+
         # Focus the file browser on startup; light its indicator immediately.
         self.query_one(FileBrowser).focus()
         self._light_indicator("left")

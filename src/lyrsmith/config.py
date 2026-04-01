@@ -37,6 +37,9 @@ class Config:
     vad_threshold: float = 0.0
     vad_min_silence_ms: int = 500
     last_directory: str = ""
+    # Set by load() when the config file exists but cannot be parsed.
+    # Displayed as a notify toast on startup; never written back to disk.
+    startup_warning: str = ""
 
 
 def load() -> Config:
@@ -54,14 +57,16 @@ def load() -> Config:
                 "whisper_languages"
             ].default_factory()
         return cfg
-    except Exception:
-        return Config()
+    except Exception as exc:
+        return Config(startup_warning=f"Config file could not be loaded: {exc}")
 
 
 def save(cfg: Config) -> None:
     try:
         _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        # Exclude startup_warning — it is runtime-only and must not be persisted.
+        data = {k: v for k, v in asdict(cfg).items() if k != "startup_warning"}
         with open(_CONFIG_FILE, "w") as f:
-            yaml.dump(asdict(cfg), f, default_flow_style=False, allow_unicode=True)
+            yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
     except Exception:
         pass  # non-fatal: stale config is preferable to a crash on exit
