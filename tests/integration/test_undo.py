@@ -22,7 +22,9 @@ class TestUndoChain:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                pilot.app.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # browser → waveform
+                await pilot.pause()
+                await pilot.press("tab")  # waveform → lrc-list
                 await pilot.pause()
 
                 original_ts = ed._lines[0].timestamp  # 1.0
@@ -48,7 +50,9 @@ class TestUndoChain:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                pilot.app.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # browser → waveform
+                await pilot.pause()
+                await pilot.press("tab")  # waveform → lrc-list
                 await pilot.pause()
 
                 assert len(ed._lines) == 5
@@ -76,7 +80,9 @@ class TestUndoChain:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                pilot.app.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # browser → waveform
+                await pilot.pause()
+                await pilot.press("tab")  # waveform → lrc-list
                 await pilot.pause()
 
                 ed._current_position = 6.0
@@ -121,7 +127,9 @@ class TestMultiLevelUndo:
         ed = pilot.app.query_one(LyricsEditor)
         ed.load_lrc(_SAMPLE_LRC)
         await pilot.pause()
-        pilot.app.query_one("#lrc-list").focus()
+        await pilot.press("tab")  # browser → waveform
+        await pilot.pause()
+        await pilot.press("tab")  # waveform → lrc-list
         await pilot.pause()
         return ed
 

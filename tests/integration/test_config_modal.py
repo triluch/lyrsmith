@@ -52,16 +52,16 @@ class TestConfigModal:
             async with _factory(config=Config(whisper_model="base")).run_test(
                 headless=True
             ) as pilot:
-                from textual.widgets import Input as _Input
-
                 app = pilot.app
                 await pilot.pause()
                 app.action_show_config()
                 await pilot.pause()
                 assert isinstance(app.screen, ConfigModal)
 
-                inp = app.screen.query_one("#f-whisper-model", _Input)
-                inp.value = "tiny"
+                # f-whisper-model is focused on open; current value "base" (4 chars)
+                for _ in range(4):
+                    await pilot.press("backspace")
+                await pilot.press("t", "i", "n", "y")
                 await pilot.pause()
                 await pilot.press("ctrl+s")
                 await pilot.pause()
@@ -77,15 +77,19 @@ class TestConfigModal:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                from textual.widgets import Input as _Input
-
                 app = pilot.app
                 await pilot.pause()
                 app.action_show_config()
                 await pilot.pause()
                 assert isinstance(app.screen, ConfigModal)
 
-                app.screen.query_one("#f-intra-threads", _Input).value = "not_a_number"
+                # Tab from f-whisper-model (focused) to f-intra-threads (5 tabs)
+                for _ in range(5):
+                    await pilot.press("tab")
+                    await pilot.pause()
+                # Default value is "0" (1 char); clear it and type invalid value
+                await pilot.press("backspace")
+                await pilot.press(*"not_a_number")
                 await pilot.pause()
                 await pilot.press("ctrl+s")
                 await pilot.pause()
@@ -143,8 +147,6 @@ class TestConfigModal:
 
         async def _impl():
             async with _factory().run_test(headless=True) as pilot:
-                from textual.widgets import Input as _Input
-
                 from lyrsmith.ui.config_modal import _FIELD_DESCRIPTIONS
 
                 app = pilot.app
@@ -154,13 +156,16 @@ class TestConfigModal:
                 assert isinstance(app.screen, ConfigModal)
                 modal = app.screen
 
+                # on_mount focuses f-whisper-model and sets its help text.
+                # Tab through fields in declaration order; check help text before
+                # each tab so each assertion targets the currently focused field.
                 for field_id, expected_desc in _FIELD_DESCRIPTIONS.items():
-                    modal.query_one(f"#{field_id}", _Input).focus()
-                    await pilot.pause()
                     help_text = str(modal.query_one("#help-area", Label).content)
                     assert help_text == expected_desc, (
                         f"{field_id}: expected {expected_desc!r}, got {help_text!r}"
                     )
+                    await pilot.press("tab")
+                    await pilot.pause()
 
                 await pilot.press("escape")
                 await pilot.pause()

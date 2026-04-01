@@ -213,7 +213,9 @@ class TestSaveFlow:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                pilot.app.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # browser → waveform
+                await pilot.pause()
+                await pilot.press("tab")  # waveform → lrc-list
                 await pilot.pause()
 
                 ed.update_position(4.5)
@@ -238,7 +240,9 @@ class TestSaveFlow:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                pilot.app.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # browser → waveform
+                await pilot.pause()
+                await pilot.press("tab")  # waveform → lrc-list
                 await pilot.pause()
 
                 await pilot.press("period")  # +10 ms
@@ -263,7 +267,9 @@ class TestSaveFlow:
                 ed = app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                app.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # browser → waveform
+                await pilot.pause()
+                await pilot.press("tab")  # waveform → lrc-list
                 await pilot.pause()
 
                 ed.update_position(4.5)

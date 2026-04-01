@@ -57,7 +57,7 @@ class TestWaveformPane:
             async with _factory().run_test(headless=True) as pilot:
                 await self._focus_waveform(pilot)
                 wf = pilot.app.query_one(WaveformPane)
-                wf._position = 20.0
+                wf.update_position(20.0)
                 await pilot.press("left")  # −5 s → 15.0
                 await pilot.pause()
                 assert pilot.app._player.position == pytest.approx(15.0)
@@ -83,7 +83,7 @@ class TestWaveformPane:
             async with _factory().run_test(headless=True) as pilot:
                 await self._focus_waveform(pilot)
                 wf = pilot.app.query_one(WaveformPane)
-                wf._position = 40.0
+                wf.update_position(40.0)
                 await pilot.press("shift+left")  # −30 s → 10.0
                 await pilot.pause()
                 assert pilot.app._player.position == pytest.approx(10.0)

@@ -32,7 +32,9 @@ class TestActiveLineHighlight:
         ed = pilot.app.query_one(LyricsEditor)
         ed.load_lrc(_SAMPLE_LRC)
         await pilot.pause()
-        pilot.app.query_one("#lrc-list").focus()
+        await pilot.press("tab")  # browser → waveform
+        await pilot.pause()
+        await pilot.press("tab")  # waveform → lrc-list
         await pilot.pause()
         return ed
 

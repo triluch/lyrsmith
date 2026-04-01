@@ -47,7 +47,7 @@ class TestEditLineDecoupling:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                ed.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # → lrc-list
                 await pilot.pause()
 
                 # Cursor is at index 0 ("First line") after load.
@@ -76,7 +76,7 @@ class TestEditLineDecoupling:
                 ed = pilot.app.query_one(LyricsEditor)
                 ed.load_lrc(_SAMPLE_LRC)
                 await pilot.pause()
-                ed.query_one("#lrc-list").focus()
+                await pilot.press("tab")  # → lrc-list
                 await pilot.pause()
 
                 # Move cursor to the second line. lv.index starts as None so

@@ -17,11 +17,13 @@ class TestLrcEditorInteractions:
     """Key-driven LRC editing: stamp, nudge, delete, merge, edit modal."""
 
     async def _setup(self, pilot):
-        """Load _SAMPLE_LRC and focus the lrc-list. Returns the editor."""
+        """Load _SAMPLE_LRC and navigate to the lrc-list. Returns the editor."""
         ed = pilot.app.query_one(LyricsEditor)
         ed.load_lrc(_SAMPLE_LRC)
         await pilot.pause()
-        pilot.app.query_one("#lrc-list").focus()
+        await pilot.press("tab")  # browser → waveform
+        await pilot.pause()
+        await pilot.press("tab")  # waveform → lrc-list
         await pilot.pause()
         return ed
 
