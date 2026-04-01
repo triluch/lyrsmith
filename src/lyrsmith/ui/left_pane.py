@@ -85,21 +85,24 @@ class LeftPane(Widget):
             )
 
     def _warm_cache(self, files: list[Path]) -> None:
-        """Run in a thread: pre-populate the metadata cache for all files.
+        """Run in a thread: pre-populate the SQLite metadata cache for all files.
 
-        No rate limiting or entry cap — for very large directories (1k+ files)
-        with long embedded lyrics this can be significant I/O.  Consider adding
-        a per-iteration sleep or capping at e.g. min(len(files), 50) if it
-        causes visible slowdowns on mechanical drives.
+        On first run each file needs a full tag read; on subsequent runs the
+        SQLite cache returns immediately for unchanged files.  After all files
+        are warm, FileBrowser.refresh_filter() is called on the UI thread so
+        any items that were shown conservatively (cache miss during filter) get
+        re-evaluated with full data.
         """
         worker = get_current_worker()
         for path in files:
             if worker.is_cancelled:
-                break
+                return
             try:
                 read_info(path)
             except Exception:
                 pass
+        # Re-apply the active filter now that all metadata is cached.
+        self.app.call_from_thread(lambda: self.query_one(FileBrowser).refresh_filter())
 
     # ------------------------------------------------------------------
 

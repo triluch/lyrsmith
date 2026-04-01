@@ -15,7 +15,7 @@ from mutagen.id3 import ID3, USLT
 
 import lyrsmith.metadata.tags as _tags_mod
 from lyrsmith.lrc import LRCLine, WordTiming
-from lyrsmith.metadata.cache import cache
+from lyrsmith.metadata.disk_cache import disk_cache
 from lyrsmith.metadata.tags import (
     WORD_DATA_TAG,
     _read_id3_uslt,
@@ -251,7 +251,7 @@ class TestReadInfo:
         f.tags["artist"] = ["Artist Name"]
         f.tags["album"] = ["Album Name"]
         f.save()
-        cache.invalidate(flac_file)
+        disk_cache.invalidate(flac_file)
 
         info = read_info(flac_file)
         assert info.title == "My Song"
@@ -259,31 +259,31 @@ class TestReadInfo:
         assert info.album == "Album Name"
 
     def test_has_lyrics_set_when_lyrics_present(self, mp3_file):
-        cache.invalidate(mp3_file)
+        disk_cache.invalidate(mp3_file)
         write_lyrics(mp3_file, "Hello world")
         info = read_info(mp3_file)
         assert info.has_lyrics is True
         assert info.lyrics_type == "plain"
-        assert info.lyrics_text == "Hello world"
 
     def test_has_lyrics_false_when_absent(self, mp3_file):
-        cache.invalidate(mp3_file)
+        disk_cache.invalidate(mp3_file)
         info = read_info(mp3_file)
         assert info.has_lyrics is False
-        assert info.lyrics_text is None
 
     def test_lrc_type_detected(self, mp3_file):
-        cache.invalidate(mp3_file)
+        disk_cache.invalidate(mp3_file)
         write_lyrics(mp3_file, "[00:01.00]Hello\n[00:02.00]World")
         info = read_info(mp3_file)
         assert info.lyrics_type == "lrc"
 
-    def test_cache_hit_returns_same_object(self, mp3_file):
-        # Ensure a fresh read then verify the second call hits the cache
-        cache.invalidate(mp3_file)
+    def test_cache_hit_returns_consistent_data(self, mp3_file):
+        """Two successive read_info calls return the same metadata values."""
+        disk_cache.invalidate(mp3_file)
         info1 = read_info(mp3_file)
         info2 = read_info(mp3_file)
-        assert info1 is info2  # identical object from LRU cache
+        assert info1.has_lyrics == info2.has_lyrics
+        assert info1.lyrics_type == info2.lyrics_type
+        assert info1.title == info2.title
 
 
 # ---------------------------------------------------------------------------
@@ -647,9 +647,7 @@ class TestUsltRead:
     def test_read_lyrics_passes_lang_prefs(self, mp3_file):
         """read_lyrics public API propagates lang_prefs to _read_id3_uslt."""
         _set_uslt(mp3_file, [("eng", "", _LRC_EN), ("pol", "", _LRC_PL)])
-        cache.invalidate(mp3_file)
         assert read_lyrics(mp3_file, lang_prefs=["pl"]) == _LRC_PL
-        cache.invalidate(mp3_file)
         assert read_lyrics(mp3_file, lang_prefs=["en"]) == _LRC_EN
 
 

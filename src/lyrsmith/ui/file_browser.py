@@ -9,8 +9,19 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView
 
+from .. import keybinds
+from ..metadata.cache import LyricsType
+from ..metadata.disk_cache import disk_cache
 from ..metadata.tags import is_audio_file
 from ._fast_list_view import FastListView
+
+# Cycle order: no filter → LRC only → plain only → no-lyrics only → …
+_FILTER_CYCLE: list[LyricsType | str] = ["lrc", "plain", "none"]
+_FILTER_LABELS: dict[str, str] = {
+    "lrc": "[LRC]",
+    "plain": "[plain]",
+    "none": "[—]",
+}
 
 
 class FileBrowser(Widget):
@@ -95,6 +106,7 @@ class FileBrowser(Widget):
         self._entries: list[Path | None] = []
         self._loaded: Path | None = None
         self._filter: str = ""
+        self._lyrics_filter: str | None = None  # None | "lrc" | "plain" | "none"
 
     def compose(self) -> ComposeResult:
         yield FastListView(id="browser-list")
@@ -108,6 +120,7 @@ class FileBrowser(Widget):
     def _populate(self, path: Path) -> None:
         self._path = path
         self._filter = ""
+        self._lyrics_filter = None
         lv = self.query_one("#browser-list", ListView)
         lv.clear()
         self._entries = []
@@ -166,24 +179,57 @@ class FileBrowser(Widget):
     # ------------------------------------------------------------------
 
     def _apply_filter(self) -> None:
-        """Show/hide list items by substring match; update the filter label."""
+        """Show/hide list items; update the filter label."""
         lv = self.query_one("#browser-list", ListView)
         q = self._filter.lower()
+        lf = self._lyrics_filter
         first_match: int | None = None
         for i, (item, entry) in enumerate(zip(lv.children, self._entries)):
             if not isinstance(item, ListItem):
                 continue
             # ".." is always visible; loaded file stays visible regardless of filter
-            visible = entry is None or not q or q in entry.name.lower() or entry == self._loaded
+            if entry is None or entry == self._loaded:
+                item.display = True
+                continue
+            visible = not q or q in entry.name.lower()
+            if visible and lf and entry.is_file():
+                info = disk_cache.get(entry)
+                if info is not None:
+                    if lf == "none":
+                        visible = info.lyrics_type is None
+                    else:
+                        visible = info.lyrics_type == lf
+                # cache miss → show the item conservatively;
+                # refresh_filter() is called again after warm-up
             item.display = visible
-            if visible and first_match is None and entry is not None:
+            if visible and first_match is None:
                 first_match = i
-        # Move cursor to first match when filter is active
-        if q and first_match is not None:
+        if (q or lf) and first_match is not None:
             lv.index = first_match
         fl = self.query_one("#filter-label", Label)
-        fl.update(f"/ {self._filter}" if self._filter else "")
-        fl.set_class(bool(self._filter), "active")
+        parts: list[str] = []
+        if self._filter:
+            parts.append(f"/ {self._filter}")
+        if lf:
+            parts.append(_FILTER_LABELS[lf])
+        fl.update("  ".join(parts))
+        fl.set_class(bool(parts), "active")
+
+    def cycle_lyrics_filter(self) -> None:
+        """Advance the lyrics-type filter one step through the cycle."""
+        if self._lyrics_filter is None:
+            self._lyrics_filter = _FILTER_CYCLE[0]
+        else:
+            idx = _FILTER_CYCLE.index(self._lyrics_filter)
+            next_idx = (idx + 1) % (len(_FILTER_CYCLE) + 1)
+            self._lyrics_filter = (
+                None if next_idx == len(_FILTER_CYCLE) else _FILTER_CYCLE[next_idx]
+            )
+        self._apply_filter()
+
+    def refresh_filter(self) -> None:
+        """Re-apply the current filter (call after warm-up to resolve cache misses)."""
+        self._apply_filter()
 
     # ------------------------------------------------------------------
     # Events
@@ -211,7 +257,12 @@ class FileBrowser(Widget):
             self.post_message(self.FileSelected(entry))
 
     def on_key(self, event) -> None:
-        # Printable characters build the filter string
+        if event.key == keybinds.KB_LYRICS_FILTER:
+            self.cycle_lyrics_filter()
+            event.stop()
+            return
+
+        # Printable characters build the text filter string
         if event.character and event.character.isprintable():
             self._filter += event.character
             self._apply_filter()
@@ -219,8 +270,9 @@ class FileBrowser(Widget):
             return
 
         if event.key == "escape":
-            if self._filter:
+            if self._filter or self._lyrics_filter:
                 self._filter = ""
+                self._lyrics_filter = None
                 self._apply_filter()
                 event.stop()
             return
@@ -228,7 +280,6 @@ class FileBrowser(Widget):
         if event.key == "backspace":
             event.stop()
             if self._filter:
-                # Eat one character from the filter
                 self._filter = self._filter[:-1]
                 self._apply_filter()
             elif self._path.parent != self._path:

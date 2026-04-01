@@ -19,7 +19,8 @@ from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, TXXX, USLT, ID3NoHeaderError
 
 from ..lrc import LineEnrichment, LRCLine, WordTiming, is_lrc
-from .cache import FileInfo, LyricsType, cache
+from .cache import FileInfo, LyricsType
+from .disk_cache import disk_cache
 
 
 def _lang_to_id3(lang: str) -> str:
@@ -58,15 +59,14 @@ def is_audio_file(path: Path) -> bool:
 
 
 def read_info(path: Path) -> FileInfo:
-    """Return FileInfo for path, using cache when possible."""
-    cached = cache.get(path)
+    """Return FileInfo for path, using the SQLite disk cache when possible."""
+    cached = disk_cache.get(path)
     if cached is not None:
         return cached
 
     title = artist = album = ""
     has_lyrics = False
     lyrics_type: LyricsType = None
-    lyrics_text: str | None = None
 
     try:
         f = MutagenFile(path, easy=True)
@@ -79,10 +79,9 @@ def read_info(path: Path) -> FileInfo:
 
     try:
         raw = _read_lyrics_raw(path)
-        lyrics_text = raw if raw else None  # treat empty tag as absent
-        if lyrics_text is not None:
+        if raw:
             has_lyrics = True
-            lyrics_type = "lrc" if is_lrc(lyrics_text) else "plain"
+            lyrics_type = "lrc" if is_lrc(raw) else "plain"
     except Exception:
         pass
 
@@ -93,27 +92,19 @@ def read_info(path: Path) -> FileInfo:
         album=album,
         has_lyrics=has_lyrics,
         lyrics_type=lyrics_type,
-        lyrics_text=lyrics_text,
     )
-    cache.put(info)
+    disk_cache.put(info)
     return info
 
 
 def read_lyrics(path: Path, lang_prefs: list[str] | None = None) -> str | None:
-    """Return raw lyrics string.
-
-    When *lang_prefs* is provided (BCP-47 codes in preference order) the cache
-    is bypassed so that language selection is applied fresh.  Without
-    *lang_prefs* the warm cache is used for performance.
-    """
-    if lang_prefs:
-        ext = path.suffix.lower()
-        if ext == ".mp3":
-            return _read_id3_uslt(path, lang_prefs=lang_prefs)
-        elif ext in _VORBIS_EXTS:
-            return _read_vorbis_lyrics(path)  # single-field; lang n/a
-        return None
-    return read_info(path).lyrics_text
+    """Return raw lyrics string, always reading from the audio file directly."""
+    ext = path.suffix.lower()
+    if ext == ".mp3":
+        return _read_id3_uslt(path, lang_prefs=lang_prefs)
+    elif ext in _VORBIS_EXTS:
+        return _read_vorbis_lyrics(path)
+    return None
 
 
 def write_lyrics(path: Path, lyrics: str, lang: str = "und") -> None:
@@ -131,7 +122,7 @@ def write_lyrics(path: Path, lyrics: str, lang: str = "und") -> None:
             _write_vorbis_lyrics(path, lyrics)
         else:
             raise RuntimeError(f"Lyrics saving not supported for {ext} files")
-        cache.invalidate(path)
+        disk_cache.invalidate(path)
     except Exception as e:
         raise RuntimeError(f"Failed to write lyrics to {path}: {e}") from e
 

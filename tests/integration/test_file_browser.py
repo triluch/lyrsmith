@@ -7,6 +7,8 @@ from pathlib import Path
 
 from textual.widgets import Label
 
+from lyrsmith.metadata.cache import FileInfo
+from lyrsmith.metadata.disk_cache import DiskMetadataCache
 from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
 
@@ -320,5 +322,141 @@ class TestFileBrowser:
                 assert lv.children[idx_after].display
                 assert fb._entries[idx_after] is not None
                 assert "rock" in fb._entries[idx_after].name.lower()
+
+        asyncio.run(_impl())
+
+
+class TestLyricsFilter:
+    """ctrl+f cycles the lyrics-type filter; affected items are hidden/shown."""
+
+    def _setup_files(self, tmp_path: Path, db: DiskMetadataCache) -> dict[str, Path]:
+        """Create three audio files with different lyrics types in cache."""
+        files = {
+            "lrc": _make_mp3(tmp_path / "synced.mp3"),
+            "plain": _make_mp3(tmp_path / "plain.mp3"),
+            "none": _make_mp3(tmp_path / "nolrc.mp3"),
+        }
+        db.put(FileInfo(files["lrc"], "", "", "", True, "lrc"))
+        db.put(FileInfo(files["plain"], "", "", "", True, "plain"))
+        db.put(FileInfo(files["none"], "", "", "", False, None))
+        return files
+
+    def _item_display(self, fb: FileBrowser, path: Path) -> bool:
+        """Return the display state of the list item for path."""
+        lv = fb.query_one("#browser-list")
+        for item, entry in zip(lv.children, fb._entries):
+            if entry == path:
+                return item.display
+        raise AssertionError(f"{path.name} not found in browser entries")
+
+    def test_ctrl_f_cycles_through_filter_states(self, make_app, monkeypatch, tmp_path):
+        """ctrl+f advances: None → lrc → plain → none → None."""
+        _factory, _ = make_app
+        test_cache = DiskMetadataCache(":memory:")
+        monkeypatch.setattr("lyrsmith.ui.file_browser.disk_cache", test_cache)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                assert fb._lyrics_filter is None
+                await pilot.press("ctrl+f")
+                await pilot.pause()
+                assert fb._lyrics_filter == "lrc"
+                await pilot.press("ctrl+f")
+                await pilot.pause()
+                assert fb._lyrics_filter == "plain"
+                await pilot.press("ctrl+f")
+                await pilot.pause()
+                assert fb._lyrics_filter == "none"
+                await pilot.press("ctrl+f")
+                await pilot.pause()
+                assert fb._lyrics_filter is None
+
+        asyncio.run(_impl())
+
+    def test_lrc_filter_shows_only_lrc_files(self, make_app, monkeypatch, tmp_path):
+        """ctrl+f once hides plain and no-lyrics files, keeps LRC files visible."""
+        _factory, _ = make_app
+        test_cache = DiskMetadataCache(":memory:")
+        files = self._setup_files(tmp_path, test_cache)
+        monkeypatch.setattr("lyrsmith.ui.file_browser.disk_cache", test_cache)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                await pilot.press("ctrl+f")  # → lrc
+                await pilot.pause()
+                assert self._item_display(fb, files["lrc"]) is True
+                assert self._item_display(fb, files["plain"]) is False
+                assert self._item_display(fb, files["none"]) is False
+
+        asyncio.run(_impl())
+
+    def test_escape_clears_lyrics_filter(self, make_app, monkeypatch, tmp_path):
+        """escape removes the lyrics filter and shows all files again."""
+        _factory, _ = make_app
+        test_cache = DiskMetadataCache(":memory:")
+        files = self._setup_files(tmp_path, test_cache)
+        monkeypatch.setattr("lyrsmith.ui.file_browser.disk_cache", test_cache)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                await pilot.press("ctrl+f")  # → lrc
+                await pilot.pause()
+                assert fb._lyrics_filter == "lrc"
+                await pilot.press("escape")
+                await pilot.pause()
+                assert fb._lyrics_filter is None
+                assert all(self._item_display(fb, f) for f in files.values())
+
+        asyncio.run(_impl())
+
+    def test_filter_label_shows_active_filter(self, make_app, monkeypatch, tmp_path):
+        """The filter label reflects the active lyrics filter type."""
+        _factory, _ = make_app
+        test_cache = DiskMetadataCache(":memory:")
+        monkeypatch.setattr("lyrsmith.ui.file_browser.disk_cache", test_cache)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                fl = fb.query_one("#filter-label", Label)
+                assert not fl.display
+                await pilot.press("ctrl+f")  # → lrc
+                await pilot.pause()
+                assert fl.display
+                assert "[LRC]" in str(fl.content)
+                await pilot.press("ctrl+f")  # → plain
+                await pilot.pause()
+                assert "[plain]" in str(fl.content)
+                await pilot.press("ctrl+f")  # → none
+                await pilot.pause()
+                assert "[—]" in str(fl.content)
+
+        asyncio.run(_impl())
+
+    def test_none_filter_shows_only_unlabelled_files(self, make_app, monkeypatch, tmp_path):
+        """ctrl+f ×3 (→ none) hides LRC and plain files."""
+        _factory, _ = make_app
+        test_cache = DiskMetadataCache(":memory:")
+        files = self._setup_files(tmp_path, test_cache)
+        monkeypatch.setattr("lyrsmith.ui.file_browser.disk_cache", test_cache)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await pilot.pause()
+                fb = pilot.app.query_one(FileBrowser)
+                for _ in range(3):
+                    await pilot.press("ctrl+f")
+                    await pilot.pause()
+                assert fb._lyrics_filter == "none"
+                assert self._item_display(fb, files["none"]) is True
+                assert self._item_display(fb, files["lrc"]) is False
+                assert self._item_display(fb, files["plain"]) is False
 
         asyncio.run(_impl())

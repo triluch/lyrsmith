@@ -48,7 +48,6 @@ def _fake_info(path: Path) -> FileInfo:
         album="",
         has_lyrics=False,
         lyrics_type=None,
-        lyrics_text=None,
     )
 
 
