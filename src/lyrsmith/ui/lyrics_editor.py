@@ -85,11 +85,11 @@ def _op_merge(lines: list[LRCLine], idx: int) -> tuple[list[LRCLine], int]:
         return lines, idx
     a, b = lines[idx], lines[idx + 1]
     if not b.text.strip():
-        # Next line is blank (covers both-blank too) — delete it, keep current unchanged.
-        lines[idx] = LRCLine(a.timestamp, a.text, end=a.end, words=list(a.words))
+        # Next line is blank (covers both-blank too) — just drop it; keep current as-is.
+        pass
     elif not a.text.strip():
-        # Current line is blank — delete it, keep next line completely unchanged.
-        lines[idx] = LRCLine(b.timestamp, b.text, end=b.end, words=list(b.words))
+        # Current line is blank — replace with next line's content, then drop it.
+        lines[idx] = b
     else:
         lines[idx] = LRCLine(
             a.timestamp,
@@ -233,6 +233,7 @@ class LyricsEditor(Widget):
         self._is_dirty: bool = False
         self._saved_hash: int = 0  # hash of serialized content at last save/load
         self._loading: bool = False  # suppresses TextArea.Changed during load_text()
+        self._load_gen: int = 0  # incremented on each load; callbacks self-cancel if stale
         self._current_position: float = 0.0
         self._undo_stack: deque[tuple[list[LRCLine], int]] = deque(maxlen=50)
         self._list_items: list[ListItem] = []
@@ -279,6 +280,8 @@ class LyricsEditor(Widget):
 
     def load_plain(self, text: str) -> None:
         """Load plain text lyrics into editor."""
+        self._load_gen += 1
+        gen = self._load_gen
         self._loading = True
         self._plain_text = text
         self._mode = "plain"
@@ -288,10 +291,13 @@ class LyricsEditor(Widget):
         ta.load_text(text)
         self._switch_mode("plain")
         # Reset after the queued TextArea.Changed has been processed.
-        self.call_after_refresh(self._finish_plain_load)
+        # Capture gen so a superseded callback from a previous load is a no-op.
+        self.call_after_refresh(lambda: self._finish_plain_load(gen))
         self.post_message(self.LinesChanged())
 
-    def _finish_plain_load(self) -> None:
+    def _finish_plain_load(self, gen: int) -> None:
+        if gen != self._load_gen:
+            return  # superseded by a newer load — don't touch _loading or dirty
         self._loading = False
         self._is_dirty = False  # belt-and-suspenders: ensure clean after load
 

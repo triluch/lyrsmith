@@ -300,3 +300,28 @@ class TestSaveFlow:
                 assert not isinstance(app.screen, UnsavedModal)
 
         asyncio.run(_impl())
+
+    def test_rapid_load_plain_does_not_leave_dirty(self, make_app):
+        """Two back-to-back load_plain calls must not leave the editor dirty.
+
+        Regression for the _loading flag race: a callback from the first load
+        fires after the second load has started and clears _loading prematurely,
+        letting a TextArea.Changed event mark the editor dirty.
+        """
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = pilot.app.query_one(LyricsEditor)
+                # Two loads without awaiting between them — both call_after_refresh
+                # callbacks are now queued.
+                ed.load_plain("first version of lyrics")
+                ed.load_plain("second version of lyrics")
+                # Allow all queued callbacks and events to process.
+                await pilot.pause()
+                await pilot.pause()
+                assert not ed.is_dirty
+
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())

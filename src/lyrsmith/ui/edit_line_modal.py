@@ -107,7 +107,9 @@ class EditLineModal(ModalScreen[EditLineResult]):
         row, col = ta.cursor_location
         # col is the character offset within the current row, not into the full
         # string. Compute the absolute text offset to handle multi-row content.
-        lines = ta.text.split("\n")
-        offset = sum(len(line) + 1 for line in lines[:row]) + col
+        # splitlines(keepends=True) preserves actual line endings (\n or \r\n)
+        # so len(line) accounts for the real separator without a hardcoded +1.
+        lines = ta.text.splitlines(keepends=True)
+        offset = sum(len(line) for line in lines[:row]) + col
         first, second = _split_at_cursor(ta.text, offset)
         self.dismiss(EditLineResult(action="split", text=first, second=second))
