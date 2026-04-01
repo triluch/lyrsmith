@@ -1,33 +1,44 @@
 name: Release
 
-# Fires when a GitHub release is published.  Pre-releases are skipped so
-# only stable releases land on PyPI and get build artifacts attached.
 on:
   release:
     types: [published]
 
 jobs:
-  publish:
-    name: Build, attach artifacts, and publish to PyPI
+  # Runs on every published release including pre-releases.
+  # Builds the wheel + sdist and attaches them to the release.
+  # --clobber means re-runs replace existing assets rather than failing.
+  build:
+    name: Build and attach artifacts
     runs-on: ubuntu-latest
-    if: ${{ !github.event.release.prerelease }}
-    environment: release
     permissions:
-      id-token: write   # OIDC trusted publishing — no API token required
-      contents: write   # upload dist files as release assets
-
+      contents: write
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v7
-
-      - name: Build wheel and sdist
-        run: uv build
-
-      - name: Attach dist files to the release
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/*
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+  # Only runs for stable (non-pre-release) releases.
+  # Downloads the already-built dist from the build job and publishes to PyPI
+  # via OIDC trusted publishing — no API token required.
+  publish:
+    name: Publish to PyPI
+    needs: build
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
