@@ -49,6 +49,9 @@ def _copy_to_system_clipboard(text: str) -> None:
     Tries wl-copy (Wayland), then xclip and xsel (X11).  Silently ignores
     failures so a missing tool never crashes the UI.  Textual's built-in
     copy_to_clipboard uses OSC 52, which not all terminals honour.
+
+    Best-effort: called in a daemon thread — the caller does not wait for
+    completion.  Timeout is 1 s; a missing or hung tool is silently skipped.
     """
     if os.environ.get("WAYLAND_DISPLAY"):
         try:
@@ -56,7 +59,7 @@ def _copy_to_system_clipboard(text: str) -> None:
                 ["wl-copy"],
                 input=text.encode(),
                 check=True,
-                timeout=2,
+                timeout=1,
                 capture_output=True,
             )
             return
@@ -72,7 +75,7 @@ def _copy_to_system_clipboard(text: str) -> None:
                 cmd,
                 input=text.encode(),
                 check=True,
-                timeout=2,
+                timeout=1,
                 capture_output=True,
             )
             return
@@ -676,6 +679,8 @@ class LyrsmithApp(App):
         """
         text = self.screen.get_selected_text()
         if text:
+            # Spawn and immediately notify — optimistic best-effort: the thread
+            # may still fail silently, but we don't wait for it to complete.
             threading.Thread(target=_copy_to_system_clipboard, args=(text,), daemon=True).start()
             self.notify("Copied to clipboard", timeout=3)
 
@@ -692,6 +697,8 @@ class LyrsmithApp(App):
         if isinstance(focused, TextArea):
             text = focused.selected_text
             if text:
+                # Spawn and immediately notify — optimistic best-effort: the thread
+                # may still fail silently, but we don't wait for it to complete.
                 threading.Thread(
                     target=_copy_to_system_clipboard, args=(text,), daemon=True
                 ).start()
