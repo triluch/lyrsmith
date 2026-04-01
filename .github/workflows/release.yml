@@ -2,12 +2,9 @@ name: Release
 
 on:
   release:
-    types: [published]
+    types: [published, released]
 
 jobs:
-  # Runs on every published release including pre-releases.
-  # Builds the wheel + sdist and attaches them to the release.
-  # --clobber means re-runs replace existing assets rather than failing.
   build:
     name: Build and attach artifacts
     runs-on: ubuntu-latest
@@ -25,13 +22,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Only runs for stable (non-pre-release) releases.
-  # Downloads the already-built dist from the build job and publishes to PyPI
-  # via OIDC trusted publishing — no API token required.
+  # Run PyPI release only when it's not a prerelease
   publish:
     name: Publish to PyPI
     needs: build
-    if: ${{ !github.event.release.prerelease }}
+    if: github.event.action == 'released'
     runs-on: ubuntu-latest
     environment: release
     permissions:
