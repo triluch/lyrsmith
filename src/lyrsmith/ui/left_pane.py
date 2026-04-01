@@ -77,6 +77,7 @@ class LeftPane(Widget):
         # Warm the cache for all audio files in the new directory in the
         # background so subsequent cursor moves are instant cache hits.
         if event.audio_files:
+            self.query_one(FileBrowser).set_warming(True)
             self.run_worker(
                 lambda: self._warm_cache(event.audio_files),
                 name="cache-warm",
@@ -89,9 +90,9 @@ class LeftPane(Widget):
 
         On first run each file needs a full tag read; on subsequent runs the
         SQLite cache returns immediately for unchanged files.  After all files
-        are warm, FileBrowser.refresh_filter() is called on the UI thread so
-        any items that were shown conservatively (cache miss during filter) get
-        re-evaluated with full data.
+        are warm, FileBrowser.set_warming(False) is called on the UI thread so
+        the in-progress indicator is removed and any items that were shown
+        conservatively (cache miss during filter) get re-evaluated.
         """
         worker = get_current_worker()
         for path in files:
@@ -101,8 +102,11 @@ class LeftPane(Widget):
                 read_info(path)
             except Exception:
                 pass
-        # Re-apply the active filter now that all metadata is cached.
-        self.app.call_from_thread(lambda: self.query_one(FileBrowser).refresh_filter())
+        # Clear the in-progress indicator and re-evaluate the filter.
+        # Guard against cancelled workers: a stale warm-up must not clear a
+        # freshly-started indicator for a new directory.
+        if not worker.is_cancelled:
+            self.app.call_from_thread(lambda: self.query_one(FileBrowser).set_warming(False))
 
     # ------------------------------------------------------------------
 

@@ -10,7 +10,7 @@ KB_UP = "up"
 KB_DOWN = "down"
 KB_SELECT = "enter"  # load file into workspace
 KB_BACK = "backspace"  # navigate up one directory
-KB_LYRICS_FILTER = "ctrl+f"  # cycle lyrics-type filter: off → lrc → plain → none → off
+KB_LYRICS_FILTER = "ctrl+w"  # cycle lyrics-type filter: off → lrc → plain → none → off
 
 # Player (waveform pane active)
 KB_PLAY_PAUSE = "space"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.message import Message
 from textual.widget import Widget
@@ -107,6 +108,7 @@ class FileBrowser(Widget):
         self._loaded: Path | None = None
         self._filter: str = ""
         self._lyrics_filter: str | None = None  # None | "lrc" | "plain" | "none"
+        self._warming: bool = False  # True while background cache warm-up is running
 
     def compose(self) -> ComposeResult:
         yield FastListView(id="browser-list")
@@ -121,6 +123,7 @@ class FileBrowser(Widget):
         self._path = path
         self._filter = ""
         self._lyrics_filter = None
+        self._warming = False
         lv = self.query_one("#browser-list", ListView)
         lv.clear()
         self._entries = []
@@ -173,13 +176,22 @@ class FileBrowser(Widget):
                 item.add_class("is-loaded")
             elif entry == old_loaded:
                 item.remove_class("is-loaded")
+        # Re-apply visibility so the newly loaded file is always shown and
+        # any previous loaded file is re-evaluated against the active filter.
+        self._apply_filter(move_cursor=False)
 
     # ------------------------------------------------------------------
     # Filtering
     # ------------------------------------------------------------------
 
-    def _apply_filter(self) -> None:
-        """Show/hide list items; update the filter label."""
+    def _apply_filter(self, *, move_cursor: bool = True) -> None:
+        """Show/hide list items; update the filter label.
+
+        *move_cursor*: when True and a filter is active, jump the cursor to the
+        first visible item (correct when the user just changed the filter via a
+        key press).  Pass False when re-applying filter as a side-effect of
+        another action (set_loaded, post-save refresh) so the cursor stays put.
+        """
         lv = self.query_one("#browser-list", ListView)
         q = self._filter.lower()
         lf = self._lyrics_filter
@@ -204,15 +216,18 @@ class FileBrowser(Widget):
             item.display = visible
             if visible and first_match is None:
                 first_match = i
-        if (q or lf) and first_match is not None:
+        if move_cursor and (q or lf) and first_match is not None:
             lv.index = first_match
         fl = self.query_one("#filter-label", Label)
         parts: list[str] = []
         if self._filter:
             parts.append(f"/ {self._filter}")
         if lf:
-            parts.append(_FILTER_LABELS[lf])
-        fl.update("  ".join(parts))
+            label = _FILTER_LABELS[lf]
+            if self._warming:
+                label += " …"
+            parts.append(label)
+        fl.update(Text("  ".join(parts)))
         fl.set_class(bool(parts), "active")
 
     def cycle_lyrics_filter(self) -> None:
@@ -228,8 +243,22 @@ class FileBrowser(Widget):
         self._apply_filter()
 
     def refresh_filter(self) -> None:
-        """Re-apply the current filter (call after warm-up to resolve cache misses)."""
-        self._apply_filter()
+        """Re-apply the current filter without moving the cursor.
+
+        Called after warm-up completes or after a save so visibility updates
+        without disrupting the user's current cursor position.
+        """
+        self._apply_filter(move_cursor=False)
+
+    def set_warming(self, warming: bool) -> None:
+        """Set the cache warm-up state and re-render the filter label.
+
+        Pass True when a warm-up worker starts (so an in-progress indicator
+        appears on the filter label) and False when it finishes (indicator
+        removed and filter re-evaluated with fresh cache data).
+        """
+        self._warming = warming
+        self._apply_filter(move_cursor=False)
 
     # ------------------------------------------------------------------
     # Events

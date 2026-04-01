@@ -43,7 +43,8 @@ _LEFT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
             (keybinds.KB_DOWN, "Move selection down"),
             (keybinds.KB_SELECT, "Load selected file"),
             (keybinds.KB_BACK, "Go up / trim filter"),
-            ("a-z", "Filter list"),
+            ("a-z", "Filter by filename"),
+            (keybinds.KB_LYRICS_FILTER, "Cycle lyrics-type filter"),
         ],
     ),
     (

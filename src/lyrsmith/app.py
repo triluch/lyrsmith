@@ -456,6 +456,10 @@ class LyrsmithApp(App):
             # Clear dirty flag without reloading — avoids resetting editor
             # position and losing the active lyric highlight during playback.
             self._w_editor.clear_dirty()
+            # Re-populate disk cache with the new lyrics type and refresh
+            # the browser filter so files gain/lose [LRC] status immediately.
+            read_info(self._loaded_path)
+            self._w_left.query_one(FileBrowser).refresh_filter()
             return True
         except Exception:
             self.push_screen(ErrorModal("Save failed", traceback.format_exc()))

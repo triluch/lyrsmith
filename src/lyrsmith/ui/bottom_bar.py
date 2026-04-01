@@ -94,6 +94,7 @@ def _build_hints() -> dict[str, str]:
                 _kk(keybinds.KB_UP, keybinds.KB_DOWN, "Navigate"),
                 _k(keybinds.KB_SELECT, "Load"),
                 _k(keybinds.KB_BACK, "Parent"),
+                _k(keybinds.KB_LYRICS_FILTER, "Filter"),
                 _k(keybinds.KB_TRANSCRIBE, "Transcribe"),
                 _k(keybinds.KB_PROMPT, "Prompt"),
                 _k(keybinds.KB_NEXT_MODEL, "Model"),
