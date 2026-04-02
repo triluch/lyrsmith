@@ -30,11 +30,9 @@ On Debian/Ubuntu:
 apt install libmpv-dev ffmpeg
 ```
 
-On macOS (experimental):
-```
-brew install mpv
-```
-GPU-accelerated transcription is not available on macOS; transcription runs on CPU.
+On macOS, use the Homebrew installation method below — it handles all dependencies
+automatically. GPU-accelerated transcription is not available on macOS; transcription
+runs on CPU.
 
 **NVIDIA GPU** — if you want GPU-accelerated transcription, also install libcublas and make sure it is registered with ldconfig:
 
@@ -47,7 +45,18 @@ sudo ldconfig
 
 ## Install
 
-From source using [uv](https://docs.astral.sh/uv/):
+### macOS — Homebrew (experimental)
+
+```
+brew tap triluch/lyrsmith
+brew install lyrsmith
+```
+
+All dependencies (mpv, ffmpeg, Python 3.13) are installed automatically.
+
+### Linux / from source
+
+Using [uv](https://docs.astral.sh/uv/):
 
 ```
 git clone https://github.com/triluch/lyrsmith
