@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .app import LyrsmithApp
 from .config import load as load_config
+from .debug import configure_debug_logging
 
 
 def main() -> None:
@@ -21,6 +22,11 @@ def main() -> None:
         type=Path,
         metavar="DIRECTORY",
         help="music directory to browse (default: last used, or current directory)",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="enable file-based debug logging",
     )
     args = parser.parse_args()
 
@@ -40,6 +46,7 @@ def main() -> None:
     # Suppress Python-level warnings (HuggingFace, PyTorch, urllib3, etc.)
     # before the TUI starts — they'd corrupt the display if printed to stderr.
     warnings.filterwarnings("ignore")
+    configure_debug_logging(args.debug)
 
     app = LyrsmithApp(initial_dir=initial_dir, config=config)
     app.run()

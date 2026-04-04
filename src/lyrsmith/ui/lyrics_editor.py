@@ -17,6 +17,7 @@ from textual.widget import Widget
 from textual.widgets import Label, ListItem, ListView, TextArea
 
 from .. import keybinds
+from ..debug import log_lrc_operation, snapshot_lrc_lines
 from ..lrc import LRCLine, active_line_index, parse, serialize
 from ..word_align import reconcile_word_timings
 from ._fast_list_view import FastListView
@@ -263,9 +264,16 @@ class LyricsEditor(Widget):
     def load_lrc(self, text: str) -> None:
         """Load LRC lyrics text into editor."""
         meta, lines = parse(text)
-        self.load_lines(meta, lines)
+        self.load_lines(meta, lines, source="load_lrc")
 
-    def load_lines(self, meta: dict[str, str], lines: list[LRCLine]) -> None:
+    def load_lines(
+        self,
+        meta: dict[str, str],
+        lines: list[LRCLine],
+        *,
+        source: str = "unknown",
+        source_path: str | None = None,
+    ) -> None:
         """Load pre-parsed LRC lines directly, preserving any extra fields
         (e.g. end timestamps from transcription) that the text round-trip drops."""
         self._meta = meta
@@ -278,6 +286,7 @@ class LyricsEditor(Widget):
         self._refresh_list()
         self._switch_mode("lrc")
         self.post_message(self.LinesChanged())
+        self._log_lrc_operation("load_lines", source=source, source_path=source_path)
 
     def load_plain(self, text: str) -> None:
         """Load plain text lyrics into editor."""
@@ -464,6 +473,15 @@ class LyricsEditor(Widget):
 
         lv.call_after_refresh(_apply)
 
+    def _log_lrc_operation(self, operation: str, **params) -> None:
+        """Log an LRC operation with the full resulting line snapshot."""
+
+        log_lrc_operation(
+            operation,
+            after=snapshot_lrc_lines(self._lines),
+            params=params,
+        )
+
     # ------------------------------------------------------------------
     # Keyboard handling (LRC mode)
     # ------------------------------------------------------------------
@@ -515,6 +533,7 @@ class LyricsEditor(Widget):
         elif key == keybinds.KB_STAMP_LINE:
             event.stop()
             if 0 <= self._cursor_idx < len(self._lines):
+                idx_before = self._cursor_idx
                 self._save_undo()
                 line = self._lines[self._cursor_idx]
                 line.timestamp = self._current_position
@@ -527,10 +546,19 @@ class LyricsEditor(Widget):
                 self._refresh_all_labels()
                 self._refresh_active_highlight()
                 self._set_cursor(self._cursor_idx)
+                self._log_lrc_operation(
+                    "stamp",
+                    idx=idx_before,
+                    idx_after=self._cursor_idx,
+                    position=self._current_position,
+                )
 
         elif key == keybinds.KB_UNDO:
             event.stop()
+            if not self._undo_stack:
+                return
             self._apply_undo()
+            self._log_lrc_operation("undo", idx=self._cursor_idx)
 
         elif key in _KEY_NUDGE:
             event.stop()
@@ -562,6 +590,7 @@ class LyricsEditor(Widget):
         self._refresh_all_labels()
         self._refresh_active_highlight()
         self._set_cursor(self._cursor_idx)
+        self._log_lrc_operation("nudge", idx=idx, delta=delta)
 
     def _delete(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
@@ -574,6 +603,7 @@ class LyricsEditor(Widget):
             self._set_cursor(new_cursor)
         else:
             self._cursor_idx = 0
+        self._log_lrc_operation("delete", idx=idx)
 
     def _merge(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines) - 1):
@@ -583,6 +613,7 @@ class LyricsEditor(Widget):
         self._mark_dirty()
         self._refresh_list()
         self._set_cursor(idx)
+        self._log_lrc_operation("merge", idx=idx)
 
     def _insert_blank(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
@@ -592,6 +623,7 @@ class LyricsEditor(Widget):
         self._mark_dirty()
         self._refresh_list()
         self._set_cursor(new_cursor)
+        self._log_lrc_operation("insert_blank", idx=idx)
 
     def _start_edit(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
@@ -624,6 +656,7 @@ class LyricsEditor(Widget):
             self._mark_dirty()
             self._refresh_list()
             self._set_cursor(idx)
+            self._log_lrc_operation("edit_save", idx=idx, text=result.text)
 
         elif result.action == "split":
             self._save_undo()
@@ -677,6 +710,13 @@ class LyricsEditor(Widget):
             self._mark_dirty()
             self._refresh_list()
             self._set_cursor(idx)
+            self._log_lrc_operation(
+                "edit_split",
+                idx=idx,
+                first=result.text,
+                second=result.second,
+                split_col=len(result.text),
+            )
 
     def _mark_dirty(self) -> None:
         if self._mode == "lrc":

@@ -18,6 +18,7 @@ from .audio.decoder import decode_to_pcm
 from .audio.player import Player
 from .config import Config
 from .config import save as save_config
+from .debug import log_lrc_operation
 from .lrc import attach_word_data, is_lrc
 from .lrc import parse as parse_lrc
 from .metadata.tags import (
@@ -274,11 +275,21 @@ class LyrsmithApp(App):
             word_data = read_word_data(path)
             if word_data:
                 attach_word_data(lrc_lines, word_data)
-            self._w_editor.load_lines(meta, lrc_lines)
+            self._w_editor.load_lines(
+                meta,
+                lrc_lines,
+                source="file_load",
+                source_path=str(path),
+            )
         else:
             # Plain text for existing plain lyrics or empty string for no lyrics —
             # always gives an editable area, never a dead hint screen.
             self._w_editor.load_plain(lyrics_text or "")
+            log_lrc_operation(
+                "file_load_non_lrc",
+                after=[],
+                params={"path": str(path), "lyrics_type": lyrics_type or "none"},
+            )
 
         # Save last directory
         self._config.last_directory = str(path.parent)
@@ -357,7 +368,12 @@ class LyrsmithApp(App):
                 word_data = read_word_data(self._loaded_path)
                 if word_data:
                     attach_word_data(lrc_lines, word_data)
-                self._w_editor.load_lines(meta, lrc_lines)
+                self._w_editor.load_lines(
+                    meta,
+                    lrc_lines,
+                    source="discard_reload",
+                    source_path=str(self._loaded_path),
+                )
             else:
                 self._w_editor.load_plain(lyrics_text)
         self._w_top.set_status("Reloaded")
@@ -530,7 +546,7 @@ class LyrsmithApp(App):
             self.push_screen(ErrorModal("Transcription failed", traceback.format_exc()))
             return
 
-        self._w_editor.load_lines({}, lines)
+        self._w_editor.load_lines({}, lines, source="transcription", source_path=str(path))
         self._w_editor.mark_dirty()
         # Update save lang to the transcribed/detected language (never "auto").
         if language != "auto":
