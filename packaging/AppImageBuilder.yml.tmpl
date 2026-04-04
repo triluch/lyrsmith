@@ -1,0 +1,57 @@
+version: 1
+
+script:
+  - "rm -rf AppDir"
+  - "mkdir -p AppDir/usr/lib/lyrsmith"
+  - "mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps"
+  - "curl -LsSf https://astral.sh/uv/install.sh | sh"
+  - "export PATH=\"$HOME/.local/bin:$PATH\""
+  - "uv python install 3.13"
+  - "PYBIN=\"$(uv python find 3.13)\""
+  - "\"$PYBIN\" -m venv --copies AppDir/usr/lib/lyrsmith/venv"
+  - "AppDir/usr/lib/lyrsmith/venv/bin/pip install --upgrade pip"
+  - "AppDir/usr/lib/lyrsmith/venv/bin/pip install --no-cache-dir ."
+  - "STDLIB_DIR=\"$(dirname \"$PYBIN\")/../lib/python3.13\""
+  - "cp -a \"$STDLIB_DIR\"/. AppDir/usr/lib/lyrsmith/venv/lib/python3.13/"
+  - "rm -f AppDir/usr/lib/lyrsmith/venv/lib/python3.13/EXTERNALLY-MANAGED"
+  - "find AppDir/usr/lib/lyrsmith/venv/bin -maxdepth 1 -type f ! -name python ! -name python3 ! -name python3.13 -delete"
+  - "cp packaging/lyrsmith-logo-transparent.png AppDir/usr/share/icons/hicolor/512x512/apps/lyrsmith.png"
+
+AppDir:
+  path: AppDir
+  app_info:
+    id: io.github.triluch.lyrsmith
+    name: lyrsmith
+    icon: lyrsmith
+    version: __VERSION__
+    exec: usr/lib/lyrsmith/venv/bin/python
+    exec_args: -m lyrsmith $@
+  apt:
+    arch: amd64
+    sources:
+      - sourceline: "deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse"
+        key_url: "http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x871920D1991BC93C"
+      - sourceline: "deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse"
+        key_url: "http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x871920D1991BC93C"
+    include:
+      - ffmpeg
+      - libasound2t64
+      - libmpv2
+      - libpulse0
+    exclude:
+      - libc6
+      - libgcc-s1
+      - libstdc++6
+      - libwayland-client0
+      - libx11-6
+  runtime:
+    env:
+      PYTHONNOUSERSITE: "1"
+    preserve:
+      - usr/lib/lyrsmith/venv/bin/python
+      - usr/lib/lyrsmith/venv/bin/python3
+      - usr/lib/lyrsmith/venv/bin/python3.13
+
+AppImage:
+  arch: x86_64
+  file_name: lyrsmith-__VERSION__-x86_64.AppImage
