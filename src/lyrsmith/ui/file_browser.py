@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from rich.text import Text
@@ -75,6 +76,16 @@ class FileBrowser(Widget):
     FileBrowser #filter-label.active {
         display: block;
     }
+    FileBrowser #loading-label {
+        display: none;
+        height: 1;
+        padding: 0 1;
+        color: $text-muted;
+        background: $surface;
+    }
+    FileBrowser #loading-label.active {
+        display: block;
+    }
     """
 
     # ------------------------------------------------------------------
@@ -109,9 +120,11 @@ class FileBrowser(Widget):
         self._filter: str = ""
         self._lyrics_filter: str | None = None  # None | "lrc" | "plain" | "none"
         self._warming: bool = False  # True while background cache warm-up is running
+        self._populate_generation: int = 0
 
     def compose(self) -> ComposeResult:
         yield FastListView(id="browser-list")
+        yield Label("", id="loading-label")
         yield Label("", id="filter-label")
 
     def on_mount(self) -> None:
@@ -120,6 +133,9 @@ class FileBrowser(Widget):
         self._populate(self._path)
 
     def _populate(self, path: Path) -> None:
+        self._request_populate(path)
+
+    def _request_populate(self, path: Path) -> None:
         self._path = path
         self._filter = ""
         self._lyrics_filter = None
@@ -127,14 +143,18 @@ class FileBrowser(Widget):
         lv = self.query_one("#browser-list", ListView)
         lv.clear()
         self._entries = []
+        self._set_loading(True)
 
-        all_items: list[ListItem] = []
+        self._populate_generation += 1
+        generation = self._populate_generation
+        self.run_worker(
+            self._populate_async(path, generation),
+            name="populate-dir",
+            exclusive=True,
+        )
 
-        # ".." entry
-        if path.parent != path:
-            all_items.append(ListItem(Label(".."), classes="is-dotdot"))
-            self._entries.append(None)
-
+    @staticmethod
+    def _scan_directory(path: Path) -> tuple[list[Path], list[Path]]:
         dirs: list[Path] = []
         files: list[Path] = []
         try:
@@ -147,6 +167,23 @@ class FileBrowser(Widget):
                     files.append(p)
         except OSError:
             pass
+        return dirs, files
+
+    async def _populate_async(self, path: Path, generation: int) -> None:
+        dirs, files = await asyncio.to_thread(self._scan_directory, path)
+        if generation != self._populate_generation:
+            return
+
+        self._render_entries(path, dirs, files)
+
+    def _render_entries(self, path: Path, dirs: list[Path], files: list[Path]) -> None:
+        lv = self.query_one("#browser-list", ListView)
+        all_items: list[ListItem] = []
+
+        # ".." entry
+        if path.parent != path:
+            all_items.append(ListItem(Label(".."), classes="is-dotdot"))
+            self._entries.append(None)
 
         for d in dirs:
             all_items.append(ListItem(Label(f"{d.name}/"), classes="is-dir"))
@@ -161,8 +198,15 @@ class FileBrowser(Widget):
         if all_items:
             lv.mount(*all_items)
 
+        self._set_loading(False)
         self.post_message(self.DirChanged(path, list(files)))
         self._apply_filter()
+
+    def _set_loading(self, loading: bool) -> None:
+        label = self.query_one("#loading-label", Label)
+        if loading:
+            label.update("Scanning directory...")
+        label.set_class(loading, "active")
 
     def set_loaded(self, path: Path | None) -> None:
         """Mark which file is currently loaded. Updates styles in-place, preserving cursor."""

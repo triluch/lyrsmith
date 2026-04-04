@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from pathlib import Path
 
 from textual.widgets import Label
@@ -117,6 +118,44 @@ class TestFileBrowser:
                 lv = pilot.app.query_one("#browser-list")
                 loaded_items = [item for item in lv.children if item.has_class("is-loaded")]
                 assert len(loaded_items) == 1
+
+        asyncio.run(_impl())
+
+    def test_shows_loading_feedback_while_scanning_directory(self, make_app, monkeypatch):
+        _factory, tmp_path = make_app
+        self._setup_dir(tmp_path, monkeypatch)
+
+        real_scan = FileBrowser._scan_directory
+        started = threading.Event()
+        release = threading.Event()
+
+        def _slow_scan(path: Path) -> tuple[list[Path], list[Path]]:
+            started.set()
+            release.wait(timeout=2)
+            return real_scan(path)
+
+        monkeypatch.setattr(FileBrowser, "_scan_directory", staticmethod(_slow_scan))
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                await asyncio.to_thread(started.wait, 1)
+                fb = pilot.app.query_one(FileBrowser)
+                loading = fb.query_one("#loading-label", Label)
+                assert loading.has_class("active")
+                text = (
+                    loading.content.plain
+                    if hasattr(loading.content, "plain")
+                    else str(loading.content)
+                )
+                assert "Scanning directory" in text
+
+                release.set()
+                await pilot.app.workers.wait_for_complete()
+                await pilot.pause()
+
+                assert not loading.has_class("active")
+                lv = pilot.app.query_one("#browser-list")
+                assert len(self._visible_names(fb, lv)) == 1
 
         asyncio.run(_impl())
 
