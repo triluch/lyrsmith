@@ -70,6 +70,16 @@ Or with pipx:
 pipx install .
 ```
 
+### Linux — AppImage
+
+Download the latest `lyrsmith-*-x86_64.AppImage` from
+`https://github.com/triluch/lyrsmith/releases`, then run:
+
+```
+chmod +x lyrsmith-*-x86_64.AppImage
+./lyrsmith-*-x86_64.AppImage
+```
+
 ## Updating
 
 ```

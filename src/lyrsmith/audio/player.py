@@ -7,12 +7,46 @@ set on_position to a thread-safe callback (e.g. app.call_from_thread(fn)).
 
 from __future__ import annotations
 
+import ctypes.util
+import os
 import threading
 import time
 from pathlib import Path
 from typing import Callable
 
-import mpv
+
+def _configure_mpv_library_lookup() -> None:
+    appdir = os.getenv("APPDIR")
+    if not appdir:
+        return
+
+    candidates = [
+        Path(appdir) / "usr/lib/x86_64-linux-gnu/libmpv.so.2",
+        Path(appdir) / "usr/lib/libmpv.so.2",
+    ]
+    libmpv = next((p for p in candidates if p.exists()), None)
+    if libmpv is None:
+        return
+
+    lib_dirs = [str(libmpv.parent), str(Path(appdir) / "usr/lib")]
+    existing = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = (
+        ":".join([*lib_dirs, existing]) if existing else ":".join(lib_dirs)
+    )
+
+    original_find_library = ctypes.util.find_library
+
+    def _find_library(name: str) -> str | None:
+        if name == "mpv":
+            return str(libmpv)
+        return original_find_library(name)
+
+    ctypes.util.find_library = _find_library
+
+
+_configure_mpv_library_lookup()
+
+import mpv  # noqa: E402
 
 _SEEK_MIN = 0.05  # avoid exact position-0 edge cases in mpv
 _SEEK_END = 1.0  # auto-pause this many seconds before EOF
