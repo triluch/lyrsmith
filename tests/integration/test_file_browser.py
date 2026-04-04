@@ -12,6 +12,7 @@ from lyrsmith.metadata.cache import FileInfo
 from lyrsmith.metadata.disk_cache import DiskMetadataCache
 from lyrsmith.ui.file_browser import FileBrowser
 from lyrsmith.ui.lyrics_editor import LyricsEditor
+from lyrsmith.ui.top_bar import TopBar
 
 from ._helpers import _SAMPLE_LRC, _fake_info, _make_mp3
 
@@ -63,6 +64,40 @@ class TestFileBrowser:
                 app = pilot.app
                 assert app._loaded_path == audio
                 assert app.query_one(LyricsEditor).mode == "plain"
+
+        asyncio.run(_impl())
+
+    def test_title_shows_loading_while_file_is_loading(self, make_app, monkeypatch, tmp_path):
+        _factory, _ = make_app
+        audio = _make_mp3(tmp_path / "song.mp3")
+        monkeypatch.setattr("lyrsmith.app.read_info", _fake_info)
+        monkeypatch.setattr("lyrsmith.ui.left_pane.read_info", _fake_info)
+        monkeypatch.setattr("lyrsmith.app.read_lyrics", lambda _p, **_kw: None)
+
+        async def _impl():
+            async with _factory(path=tmp_path).run_test(headless=True) as pilot:
+                top = pilot.app.query_one(TopBar)
+                real_set_song = top.set_song
+                seen_titles: list[str] = []
+
+                def _record_set_song(title: str) -> None:
+                    seen_titles.append(title)
+                    real_set_song(title)
+
+                monkeypatch.setattr(top, "set_song", _record_set_song)
+
+                await pilot.pause()
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("down")
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.pause()
+
+                assert pilot.app._loaded_path == audio
+                assert "Loading..." in seen_titles
+                assert top.song_title == "song"
 
         asyncio.run(_impl())
 
