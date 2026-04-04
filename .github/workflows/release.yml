@@ -12,6 +12,41 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+      - name: Set package version from release tag
+        shell: python
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          import os
+          import pathlib
+          import re
+          import sys
+
+          raw_tag = os.environ["RELEASE_TAG"].strip()
+          version = raw_tag[1:] if raw_tag.startswith("v") else raw_tag
+
+          if not re.fullmatch(r"\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?", version):
+              print(
+                  f"Unsupported release tag format: {raw_tag}. "
+                  "Use PEP 440 tags like v1.2.3 or v1.2.3b1",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          pyproject = pathlib.Path("pyproject.toml")
+          text = pyproject.read_text(encoding="utf-8")
+          updated, count = re.subn(
+              r'(?m)^version\s*=\s*"[^"]+"$',
+              f'version = "{version}"',
+              text,
+              count=1,
+          )
+          if count != 1:
+              print("Could not update project version in pyproject.toml", file=sys.stderr)
+              sys.exit(1)
+
+          pyproject.write_text(updated, encoding="utf-8")
+          print(f"Using package version: {version}")
       - name: Check if AppImage already exists on release
         id: check_appimage
         run: |
