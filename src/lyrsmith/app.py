@@ -226,7 +226,13 @@ class LyrsmithApp(App):
                 callback=self._unsaved_modal_done,
             )
         else:
-            self._do_load(event.path)
+            self._queue_load(event.path)
+
+    def _queue_load(self, path: Path) -> None:
+        self._w_top.set_song("Loading...")
+        # Run after next repaint so the loading title is visible before
+        # potentially slow metadata I/O on remote/network filesystems.
+        self.call_after_refresh(lambda: self._do_load(path))
 
     def _do_load(self, path: Path) -> None:
         self._loaded_path = path
@@ -290,12 +296,13 @@ class LyrsmithApp(App):
     # Unsaved modal callback
     # ------------------------------------------------------------------
 
-    def _unsaved_modal_done(self, choice: str) -> None:
+    def _unsaved_modal_done(self, choice: str | None) -> None:
         if choice is None or choice == "back":
             self._pending_load = None
             self._pending_quit = False
             return
         if choice == "save":
+            self._w_top.set_status("Saving...")
             if not self._do_save():
                 # Save failed (empty content or write error) — abort and let
                 # the user see the status bar message before deciding next step.
@@ -311,7 +318,7 @@ class LyrsmithApp(App):
         elif self._pending_load:
             path = self._pending_load
             self._pending_load = None
-            self._do_load(path)
+            self._queue_load(path)
 
     # ------------------------------------------------------------------
     # Actions
@@ -331,7 +338,12 @@ class LyrsmithApp(App):
             self.exit()
 
     def action_save(self) -> None:
-        self._do_save()
+        if self._loaded_path is None:
+            return
+        self._w_top.set_status("Saving...")
+        # Run the write after the next repaint so the user sees feedback
+        # immediately even when the save blocks on slow storage.
+        self.call_after_refresh(self._do_save)
 
     def action_discard_reload(self) -> None:
         if self._loaded_path is None:
