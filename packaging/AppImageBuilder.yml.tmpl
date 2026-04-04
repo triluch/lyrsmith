@@ -36,14 +36,14 @@ AppDir:
     include:
       - ffmpeg
       - libasound2t64
+      - libegl1
+      - libgl1
       - libmpv2
       - libpulse0
     exclude:
       - libc6
       - libgcc-s1
       - libstdc++6
-      - libwayland-client0
-      - libx11-6
   runtime:
     env:
       PYTHONNOUSERSITE: "1"
