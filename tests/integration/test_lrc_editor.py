@@ -37,6 +37,35 @@ class TestLrcEditorInteractions:
 
         asyncio.run(_impl())
 
+    def test_stamp_shifts_end_and_word_timings(self, make_app):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                ed = await self._setup(pilot)
+                ed._lines[0].end = 2.0
+                ed._lines[0].words = [
+                    WordTiming(" First", 1.1, 1.4),
+                    WordTiming(" line", 1.5, 1.8),
+                ]
+
+                ed._current_position = 4.5
+                await pilot.press("t")
+                await pilot.pause()
+
+                stamped = ed._lines[ed._cursor_idx]
+                assert stamped.timestamp == pytest.approx(4.5)
+                assert stamped.end == pytest.approx(5.5)
+                assert stamped.words[0].start == pytest.approx(4.6)
+                assert stamped.words[0].end == pytest.approx(4.9)
+                assert stamped.words[1].start == pytest.approx(5.0)
+                assert stamped.words[1].end == pytest.approx(5.3)
+
+                ed.clear_dirty()
+                await pilot.press("ctrl+q")
+
+        asyncio.run(_impl())
+
     def test_nudge_fine_forward_shifts_timestamp(self, make_app):
         _factory, _ = make_app
 

@@ -165,7 +165,12 @@ class EditLineModal(ModalScreen[EditLineResult]):
         if not current_text or not self._words:
             preview.add_class("hidden")
             return
-        new_words = reconcile_word_timings(self._words, current_text, self._lang)
+        new_words = reconcile_word_timings(
+            self._words,
+            current_text,
+            self._lang,
+            line_start=self._line_ts,
+        )
         preview.update(_fmt_preview(new_words, self._line_ts))
         preview.remove_class("hidden")
 

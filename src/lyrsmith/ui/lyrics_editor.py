@@ -51,15 +51,20 @@ def _op_nudge(lines: list[LRCLine], idx: int, delta: float) -> tuple[list[LRCLin
     if not (0 <= idx < len(lines)):
         return lines, idx
     line = lines[idx]
+    _shift_line_timing(line, delta)
+    lines.sort(key=lambda l: l.timestamp)
+    new_idx = next((i for i, l in enumerate(lines) if l is line), idx)
+    return lines, new_idx
+
+
+def _shift_line_timing(line: LRCLine, delta: float) -> None:
+    """Shift a line timestamp and all attached timing data by *delta*."""
     line.timestamp = max(0.0, line.timestamp + delta)
     if line.end is not None:
         line.end = max(0.0, line.end + delta)
     for w in line.words:
         w.start = max(0.0, w.start + delta)
         w.end = max(0.0, w.end + delta)
-    lines.sort(key=lambda l: l.timestamp)
-    new_idx = next((i for i, l in enumerate(lines) if l is line), idx)
-    return lines, new_idx
 
 
 def _op_delete(lines: list[LRCLine], idx: int) -> tuple[list[LRCLine], int]:
@@ -536,7 +541,7 @@ class LyricsEditor(Widget):
                 idx_before = self._cursor_idx
                 self._save_undo()
                 line = self._lines[self._cursor_idx]
-                line.timestamp = self._current_position
+                _shift_line_timing(line, self._current_position - line.timestamp)
                 self._lines.sort(key=lambda l: l.timestamp)
                 self._cursor_idx = next(
                     (i for i, l in enumerate(self._lines) if l is line),
@@ -652,7 +657,12 @@ class LyricsEditor(Widget):
             # Reconcile word timing: preserves timings through edits that
             # join, split, delete, or insert words rather than dropping
             # them whenever the word count changes.
-            self._lines[idx].words = reconcile_word_timings(old_words, result.text, lang)
+            self._lines[idx].words = reconcile_word_timings(
+                old_words,
+                result.text,
+                lang,
+                line_start=self._lines[idx].timestamp,
+            )
             self._mark_dirty()
             self._refresh_list()
             self._set_cursor(idx)
