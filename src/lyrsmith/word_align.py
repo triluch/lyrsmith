@@ -187,7 +187,7 @@ def _char_align_chunk(
 _SENTINEL = -999.0  # marks words inserted with no old timing
 
 
-def _fill_inserted(words: list[WordTiming]) -> None:
+def _fill_inserted(words: list[WordTiming], line_start: float | None = None) -> None:
     """Interpolate timing for words marked with the _SENTINEL start value."""
     n = len(words)
     i = 0
@@ -199,9 +199,21 @@ def _fill_inserted(words: list[WordTiming]) -> None:
         j = i
         while j < n and words[j].start == _SENTINEL:
             j += 1
-        # Bounding times: end of previous word / start of next
-        t0 = words[i - 1].end if i > 0 else 0.0
+        # Bounding times: end of previous word / start of next. For insertions
+        # at the very start, never backfill from absolute 0.0 unless the line
+        # itself starts there; otherwise an inserted leading word can end up
+        # absurdly far before the line timestamp.
+        if i > 0:
+            t0 = words[i - 1].end
+        elif line_start is not None:
+            t0 = max(0.0, line_start)
+        elif j < n:
+            t0 = words[j].start
+        else:
+            t0 = 0.0
         t1 = words[j].start if j < n else t0
+        if t1 < t0:
+            t0 = t1
         count = j - i
         for k in range(count):
             seg_start = t0 + (k / count) * (t1 - t0)
@@ -223,6 +235,7 @@ def reconcile_word_timings(
     old_words: list[WordTiming],
     new_text: str,
     lang: str = "",
+    line_start: float | None = None,
 ) -> list[WordTiming]:
     """Compute best-effort word timings for *new_text* based on *old_words*.
 
@@ -291,5 +304,5 @@ def reconcile_word_timings(
                 # N→1 (join) or N→M: character-level alignment handles both
                 result.extend(_char_align_chunk(old_chunk, new_chunk))
 
-    _fill_inserted(result)
+    _fill_inserted(result, line_start=line_start)
     return result

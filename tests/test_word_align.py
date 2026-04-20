@@ -258,6 +258,16 @@ class TestReconcileInsert:
         assert result[-1].start == pytest.approx(0.9)
         assert result[-1].end == pytest.approx(1.2)
 
+    def test_leading_insert_respects_line_start(self):
+        """A new first word must not be backfilled before the line timestamp."""
+        old = [wt(" world", 205.82, 207.22)]
+        result = reconcile_word_timings(old, "Oh world", line_start=205.82)
+        assert len(result) == 2
+        assert result[0].start >= 205.82 - 1e-6
+        assert result[0].end >= result[0].start
+        assert result[1].start == pytest.approx(205.82)
+        assert result[1].end == pytest.approx(207.22)
+
 
 # ---------------------------------------------------------------------------
 # N:M alignment — multiple old words → multiple new words (not 1:1)
