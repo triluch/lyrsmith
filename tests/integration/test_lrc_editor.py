@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from textual.widgets import TextArea
 
 from lyrsmith.lrc import WordTiming
 from lyrsmith.ui.edit_line_modal import EditLineModal
@@ -741,5 +742,70 @@ class TestEditModalTimingPreview:
                 assert "0.50" in updated_text  # First end preserved
                 assert "line" not in updated_text
                 assert updated_text.count("[") == 1  # only one timing entry
+
+        asyncio.run(_impl())
+
+
+class TestPlainToLrcConversion:
+    def test_ctrl_e_converts_plain_editor_text_to_lrc_lines(self, make_app, tmp_path):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._loaded_path = tmp_path / "song.mp3"
+                ed = app._w_editor
+                ed.load_plain("Draft line\nAnother line")
+                await pilot.pause()
+
+                plain = app.query_one("#plain-area", TextArea)
+                plain.focus()
+                await pilot.pause()
+                plain.load_text("[Verse 1]\nFirst line\nSecond line\nThird line")
+                await pilot.pause()
+
+                await pilot.press("ctrl+e")
+                await pilot.pause()
+                await pilot.pause()
+
+                assert ed.mode == "lrc"
+                assert [line.text for line in ed.lrc_lines] == [
+                    "First line",
+                    "Second line",
+                    "Third line",
+                ]
+                assert [line.timestamp for line in ed.lrc_lines] == pytest.approx(
+                    [60.0, 80.0, 100.0]
+                )
+                assert all(not line.words for line in ed.lrc_lines)
+                assert ed.is_dirty
+
+        asyncio.run(_impl())
+
+    def test_ctrl_e_uses_current_plain_editor_contents(self, make_app, tmp_path):
+        _factory, _ = make_app
+
+        async def _impl():
+            async with _factory().run_test(headless=True) as pilot:
+                app = pilot.app
+                app._loaded_path = tmp_path / "song.mp3"
+                ed = app._w_editor
+                ed.load_plain("Old text")
+                await pilot.pause()
+
+                plain = app.query_one("#plain-area", TextArea)
+                plain.focus()
+                await pilot.pause()
+                plain.load_text("Alpha\n[Chorus]\nBeta")
+                await pilot.pause()
+
+                await pilot.press("ctrl+e")
+                await pilot.pause()
+                await pilot.pause()
+
+                assert ed.mode == "lrc"
+                assert [line.text for line in ed.lrc_lines] == ["Alpha", "Beta"]
+                assert [line.timestamp for line in ed.lrc_lines] == pytest.approx([60.0, 90.0])
+                assert ed.is_dirty
 
         asyncio.run(_impl())

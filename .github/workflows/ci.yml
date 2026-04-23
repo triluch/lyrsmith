@@ -27,7 +27,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y libmpv2
       - uses: astral-sh/setup-uv@v7
       - run: uv sync
-      - run: uv run pytest -m "not slow" -q
+      - run: uv run pytest -m "not slow"
 
   test-macos:
     name: Tests (fast, macOS)
@@ -53,7 +53,7 @@ jobs:
           bundled=$(find .venv -path '*/av/.dylibs/libavdevice.*.dylib' | head -1)
           system=$(find /opt/homebrew -name 'libavdevice.*.dylib' | head -1)
           [ -n "$bundled" ] && [ -n "$system" ] && ln -sf "$system" "$bundled" || true
-      - run: uv run pytest -m "not slow" -q
+      - run: uv run pytest -m "not slow"
 
   test-full:
     name: Tests (full, incl. slow)
@@ -70,7 +70,7 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-whisper-tiny
       - run: uv sync
-      - run: uv run pytest -q
+      - run: uv run pytest
 
   test-full-macos:
     name: Tests (full, incl. slow, macOS)
@@ -101,4 +101,4 @@ jobs:
           bundled=$(find .venv -path '*/av/.dylibs/libavdevice.*.dylib' | head -1)
           system=$(find /opt/homebrew -name 'libavdevice.*.dylib' | head -1)
           [ -n "$bundled" ] && [ -n "$system" ] && ln -sf "$system" "$bundled" || true
-      - run: uv run pytest -q
+      - run: uv run pytest

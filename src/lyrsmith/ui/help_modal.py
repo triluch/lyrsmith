@@ -64,6 +64,12 @@ _LEFT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
 # Right column: lyrics editor
 _RIGHT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
     (
+        "Lyrics Editor — plain mode",
+        [
+            (keybinds.KB_CONVERT_PLAIN, "Convert plain lyrics to editable LRC lines"),
+        ],
+    ),
+    (
         "Lyrics Editor — LRC mode",
         [
             (keybinds.KB_LINE_UP, "Move selection up"),

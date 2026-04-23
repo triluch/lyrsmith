@@ -27,6 +27,7 @@ VOL_STEP = 5.0
 # Lyrics editor - LRC mode
 KB_LINE_UP = "up"
 KB_LINE_DOWN = "down"
+KB_CONVERT_PLAIN = "ctrl+e"  # convert plain lyrics to editable timestamped lines
 KB_SEEK_TO_LINE = "enter"  # seek playback to selected line's timestamp
 KB_STAMP_LINE = "t"  # set selected line's timestamp to current playback position
 KB_DELETE_LINE = "ctrl+d"  # delete selected line (undoable)

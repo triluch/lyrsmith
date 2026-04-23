@@ -151,6 +151,7 @@ def _build_hints() -> dict[str, str]:
         "lyrics-plain": _SEP.join(
             [
                 f"[{_DC}]Edit freely[/]",
+                _k(keybinds.KB_CONVERT_PLAIN, "Convert to LRC"),
                 _k(keybinds.KB_SAVE, "Save"),
                 _k(keybinds.KB_DISCARD_RELOAD, "Reload"),
                 _k(keybinds.KB_QUIT, "Quit"),

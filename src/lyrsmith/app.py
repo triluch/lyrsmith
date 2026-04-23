@@ -12,6 +12,7 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
+from textual.widgets import TextArea
 
 from . import keybinds
 from .audio.decoder import decode_to_pcm
@@ -133,6 +134,13 @@ class LyrsmithApp(App):
         Binding(keybinds.KB_DISCARD_RELOAD, "discard_reload", "Reload", show=False),
         Binding(keybinds.KB_TRANSCRIBE, "transcribe", "Transcribe", show=False),
         Binding(keybinds.KB_PROMPT, "show_prompt", "Prompt", show=False, priority=True),
+        Binding(
+            keybinds.KB_CONVERT_PLAIN,
+            "convert_plain_to_lrc",
+            "Convert plain lyrics",
+            show=False,
+            priority=True,
+        ),
         Binding(keybinds.KB_NEXT_MODEL, "next_model", "Model", show=False),
         Binding(keybinds.KB_NEXT_LANG, "next_lang", "Language", show=False),
         Binding(keybinds.KB_HELP, "show_help", "Help", show=False),
@@ -402,6 +410,20 @@ class LyrsmithApp(App):
             PromptModal(self._whisper_prompt),
             callback=self._prompt_modal_done,
         )
+
+    def action_convert_plain_to_lrc(self) -> None:
+        if self.screen is not self.screen_stack[0]:
+            return
+        if self._w_editor.mode != "plain":
+            return
+        plain = self._w_editor.query_one("#plain-area", TextArea)
+        if self.focused is not plain:
+            return
+        if not self._w_editor.convert_plain_to_lrc(self._player.duration):
+            self._w_top.set_status("No lyric lines to convert")
+            return
+        self._w_editor.query_one("#lrc-list").focus()
+        self._update_bottom_bar("edit")
 
     def _prompt_modal_done(self, prompt: str | None) -> None:
         """Called when PromptModal closes. None = cancelled; str = submit."""

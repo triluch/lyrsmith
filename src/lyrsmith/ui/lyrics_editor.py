@@ -9,6 +9,7 @@ Three modes:
 
 from __future__ import annotations
 
+import re
 from collections import deque
 
 from textual.app import ComposeResult
@@ -34,6 +35,7 @@ _KEY_NUDGE: dict[str, float] = {
 }
 
 _EMPTY_HINT = "Select a file and press Enter to load"
+_PLAIN_SECTION_RE = re.compile(r"^\[[^\]]+\]$")
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +151,26 @@ def _join_lines(a: str, b: str) -> str:
     if first_word == "I" or (len(first_word) > 1 and first_word.rstrip(".,!?").isupper()):
         return f"{a} {b}"
     return f"{a} {b[0].lower()}{b[1:]}"
+
+
+def _plain_text_to_lrc_lines(text: str, duration: float) -> list[LRCLine]:
+    """Convert plain-text lyrics into evenly spread LRC lines near song end."""
+    lyric_lines = [
+        stripped
+        for raw in text.splitlines()
+        if (stripped := raw.strip()) and not _PLAIN_SECTION_RE.fullmatch(stripped)
+    ]
+    if not lyric_lines:
+        return []
+
+    count = len(lyric_lines)
+    virtual_duration = max(duration, 2.0 * count)
+    start = virtual_duration * 0.5
+    step = (virtual_duration * 0.5) / count
+    return [
+        LRCLine(timestamp=round(start + i * step, 3), text=line)
+        for i, line in enumerate(lyric_lines)
+    ]
 
 
 class LyricsEditor(Widget):
@@ -281,6 +303,8 @@ class LyricsEditor(Widget):
     ) -> None:
         """Load pre-parsed LRC lines directly, preserving any extra fields
         (e.g. end timestamps from transcription) that the text round-trip drops."""
+        self._load_gen += 1
+        self._loading = False
         self._meta = meta
         self._lines = lines
         self._mode = "lrc"
@@ -309,6 +333,21 @@ class LyricsEditor(Widget):
         # Capture gen so a superseded callback from a previous load is a no-op.
         self.call_after_refresh(lambda: self._finish_plain_load(gen))
         self.post_message(self.LinesChanged())
+
+    def convert_plain_to_lrc(self, duration: float) -> bool:
+        """Convert current plain-text editor contents into editable LRC lines."""
+        if self._mode != "plain":
+            return False
+
+        text = self.query_one("#plain-area", TextArea).text
+        lines = _plain_text_to_lrc_lines(text, duration)
+        if not lines:
+            return False
+
+        self.load_lines({}, lines, source="plain_to_lrc")
+        self._saved_hash = hash(("plain", text))
+        self._mark_dirty()
+        return True
 
     def _finish_plain_load(self, gen: int) -> None:
         if gen != self._load_gen:
