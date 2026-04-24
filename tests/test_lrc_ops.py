@@ -10,6 +10,7 @@ from lyrsmith.ui.lyrics_editor import (
     _op_insert_blank,
     _op_merge,
     _op_nudge,
+    _op_shift_all,
 )
 
 
@@ -97,6 +98,34 @@ class TestOpNudge:
         assert result[0].end == pytest.approx(0.0)
         assert result[0].words[0].start == pytest.approx(0.0)
         assert result[0].words[0].end == pytest.approx(0.0)
+
+
+class TestOpShiftAll:
+    def test_shift_all_moves_every_line_timestamp(self):
+        lines = _make([(1.0, "A"), (3.0, "B"), (5.0, "C")])
+        result = _op_shift_all(lines, 0.5)
+        assert [line.timestamp for line in result] == pytest.approx([1.5, 3.5, 5.5])
+
+    def test_shift_all_moves_end_and_word_timings(self):
+        lines = [
+            LRCLine(1.0, "A", end=2.0, words=[_wt(" hi", 1.1, 1.4)]),
+            LRCLine(3.0, "B", end=4.0, words=[_wt(" there", 3.2, 3.6)]),
+        ]
+        result = _op_shift_all(lines, 1.0)
+        assert result[0].end == pytest.approx(3.0)
+        assert result[0].words[0].start == pytest.approx(2.1)
+        assert result[1].end == pytest.approx(5.0)
+        assert result[1].words[0].end == pytest.approx(4.6)
+
+    def test_shift_all_clamps_to_zero(self):
+        lines = [
+            LRCLine(1.0, "A", end=2.0, words=[_wt(" hi", 1.1, 1.4)]),
+            LRCLine(3.0, "B", end=4.0, words=[_wt(" there", 3.2, 3.6)]),
+        ]
+        result = _op_shift_all(lines, -99.0)
+        assert all(line.timestamp == pytest.approx(0.0) for line in result)
+        assert all(line.end == pytest.approx(0.0) for line in result)
+        assert all(word.start == pytest.approx(0.0) for line in result for word in line.words)
 
 
 # ---------------------------------------------------------------------------

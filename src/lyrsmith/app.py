@@ -37,6 +37,7 @@ from .ui.config_modal import ConfigModal
 from .ui.edit_line_modal import EditLineModal, EditLineResult
 from .ui.error_modal import ErrorModal
 from .ui.file_browser import FileBrowser
+from .ui.global_offset_modal import GlobalOffsetModal
 from .ui.help_modal import HelpModal
 from .ui.indicator_segment import IndicatorSegment
 from .ui.left_pane import LeftPane
@@ -138,6 +139,13 @@ class LyrsmithApp(App):
             keybinds.KB_CONVERT_PLAIN,
             "convert_plain_to_lrc",
             "Convert plain lyrics",
+            show=False,
+            priority=True,
+        ),
+        Binding(
+            keybinds.KB_GLOBAL_OFFSET,
+            "show_global_offset",
+            "Offset",
             show=False,
             priority=True,
         ),
@@ -424,6 +432,20 @@ class LyrsmithApp(App):
             return
         self._w_editor.query_one("#lrc-list").focus()
         self._update_bottom_bar("edit")
+
+    def action_show_global_offset(self) -> None:
+        if self.screen is not self.screen_stack[0]:
+            return
+        if self._w_editor.mode != "lrc":
+            return
+        if self._classify_focus(self.focused) != "edit":
+            return
+        self.push_screen(GlobalOffsetModal(), callback=self._global_offset_modal_done)
+
+    def _global_offset_modal_done(self, delta: float | None) -> None:
+        if delta is None:
+            return
+        self._w_editor.apply_global_offset(delta)
 
     def _prompt_modal_done(self, prompt: str | None) -> None:
         """Called when PromptModal closes. None = cancelled; str = submit."""
