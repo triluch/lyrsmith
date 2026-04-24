@@ -77,6 +77,7 @@ _RIGHT_SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
             (keybinds.KB_PLAY_PAUSE, "Play / Pause"),
             (keybinds.KB_SEEK_TO_LINE, "Seek to line timestamp"),
             (keybinds.KB_STAMP_LINE, "Stamp time to line"),
+            (keybinds.KB_GLOBAL_OFFSET, "Shift all line timestamps together"),
             (keybinds.KB_EDIT_LINE, "Edit / split line (Ctrl+K to split)"),
             (keybinds.KB_MERGE_LINE, "Merge line with next"),
             (keybinds.KB_DELETE_LINE, "Delete line"),

@@ -138,6 +138,7 @@ def _build_hints() -> dict[str, str]:
                 _kk(keybinds.KB_LINE_UP, keybinds.KB_LINE_DOWN, "Navigate"),
                 _k(keybinds.KB_SEEK_TO_LINE, "Seek"),
                 _k(keybinds.KB_STAMP_LINE, "Stamp"),
+                _k(keybinds.KB_GLOBAL_OFFSET, "Offset"),
                 _k(keybinds.KB_UNDO, "Undo"),
                 _kk(keybinds.KB_NUDGE_FINE_BACK, keybinds.KB_NUDGE_FINE_FWD, "Fine±"),
                 _kk(keybinds.KB_NUDGE_MED_BACK, keybinds.KB_NUDGE_MED_FWD, "Med±"),

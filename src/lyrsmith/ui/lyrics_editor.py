@@ -19,7 +19,7 @@ from textual.widgets import Label, ListItem, ListView, TextArea
 
 from .. import keybinds
 from ..debug import log_lrc_operation, snapshot_lrc_lines
-from ..lrc import LRCLine, active_line_index, parse, serialize
+from ..lrc import LRCLine, WordTiming, active_line_index, parse, serialize
 from ..word_align import reconcile_word_timings
 from ._fast_list_view import FastListView
 from .edit_line_modal import EditLineResult
@@ -57,6 +57,14 @@ def _op_nudge(lines: list[LRCLine], idx: int, delta: float) -> tuple[list[LRCLin
     lines.sort(key=lambda l: l.timestamp)
     new_idx = next((i for i, l in enumerate(lines) if l is line), idx)
     return lines, new_idx
+
+
+def _op_shift_all(lines: list[LRCLine], delta: float) -> list[LRCLine]:
+    """Shift all line timestamps and attached timing data by *delta*."""
+    for line in lines:
+        _shift_line_timing(line, delta)
+    lines.sort(key=lambda l: l.timestamp)
+    return lines
 
 
 def _shift_line_timing(line: LRCLine, delta: float) -> None:
@@ -476,13 +484,18 @@ class LyricsEditor(Widget):
     def _save_undo(self) -> None:
         """Push a snapshot of current lines + cursor onto the undo stack (maxlen=50).
 
-        list(l.words) is a shallow copy: WordTiming contains only immutable
-        primitive fields (str, float) and is never mutated in place — only
-        the list itself is ever replaced.  Shared WordTiming references are
-        therefore safe and a deep copy would be wasteful.
+        Word timings are copied entry-by-entry because timestamp edits mutate
+        them in place (nudge, stamp, global offset).  A shallow copy would let
+        later edits leak into the saved undo snapshot.
         """
         snapshot = [
-            LRCLine(l.timestamp, l.text, end=l.end, words=list(l.words)) for l in self._lines
+            LRCLine(
+                l.timestamp,
+                l.text,
+                end=l.end,
+                words=[WordTiming(w.word, w.start, w.end) for w in l.words],
+            )
+            for l in self._lines
         ]
         self._undo_stack.append((snapshot, self._cursor_idx))
 
@@ -668,6 +681,25 @@ class LyricsEditor(Widget):
         self._refresh_list()
         self._set_cursor(new_cursor)
         self._log_lrc_operation("insert_blank", idx=idx)
+
+    def apply_global_offset(self, delta: float) -> None:
+        if not self._lines or delta == 0.0:
+            return
+        self._save_undo()
+        current = (
+            self._lines[self._cursor_idx] if 0 <= self._cursor_idx < len(self._lines) else None
+        )
+        self._lines = _op_shift_all(self._lines, delta)
+        self._cursor_idx = (
+            next((i for i, line in enumerate(self._lines) if line is current), 0)
+            if current is not None
+            else 0
+        )
+        self._mark_dirty()
+        self._refresh_all_labels()
+        self._refresh_active_highlight()
+        self._set_cursor(self._cursor_idx)
+        self._log_lrc_operation("global_offset", delta=delta)
 
     def _start_edit(self, idx: int) -> None:
         if not (0 <= idx < len(self._lines)):
